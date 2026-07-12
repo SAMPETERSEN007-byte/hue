@@ -18,6 +18,19 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Product","name":"HUE Full Color Report","description":"Your complete 12-season color analysis: 30+ named shades, six colors to retire, makeup formula, hair direction, and a wardrobe system.","url":"https://huebloom.app/","image":"https://huebloom.app/og.png","brand":{"@type":"Brand","name":"HUE"},"offers":{"@type":"Offer","price":"9.00","priceCurrency":"USD","availability":"https://schema.org/InStock","url":"https://huebloom.app/"}}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"How does HUE find my season?","acceptedAnswer":{"@type":"Answer","text":"Five questions read your undertone the way an analyst would — metals, veins, sun response, contrast, whites. Then one selfie, analyzed instantly on your device, measures the depth and softness of your natural coloring. Together they place you in one of the twelve seasons."}},
+{"@type":"Question","name":"Is my photo uploaded anywhere?","acceptedAnswer":{"@type":"Answer","text":"Never. Your selfie is analyzed in your browser, on your device — it never touches a server. No accounts, no tracking, no analytics."}},
+{"@type":"Question","name":"What's in the $9 full report?","acceptedAnswer":{"@type":"Answer","text":"Your complete palette of 30+ named shades, the six colors quietly working against you (and why), your makeup formula, hair direction to take to your colorist, and a wardrobe system: neutrals, metals, prints, and three combinations to steal. One-time purchase, no subscription."}},
+{"@type":"Question","name":"How is this different from a $300 draping?","acceptedAnswer":{"@type":"Answer","text":"An in-person analyst drapes dozens of fabrics against your face over a couple of hours — it's the gold standard, and it costs $200–400. HUE uses the same 12-season system, self-served: your answers plus a daylight selfie, in about two minutes."}},
+{"@type":"Question","name":"What if I'm not happy with it?","acceptedAnswer":{"@type":"Answer","text":"Every purchase has a 30-day money-back guarantee. Email us, get your $9 back, no questions asked."}},
+{"@type":"Question","name":"Do I need an account?","acceptedAnswer":{"@type":"Answer","text":"No account, no sign-up, no emails from us. Your result and your unlock live on your device — and if you ever lose access, your receipt restores it."}}
+]}
+</script>
 <style>
   :root{
     --porcelain:#f7f2ef; --ink:#2b2129; --soft:#8b7f84; --line:#ecdfda; --card:#fffbf9;
@@ -232,6 +245,32 @@
     transition:opacity .3s,transform .3s;z-index:80;max-width:88vw;text-align:center}
   .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
+  /* FAQ */
+  .faq{padding:26px 0 64px}
+  .faq-list{max-width:640px;margin:30px auto 0;display:grid;gap:12px}
+  .faq details{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow-sm)}
+  .faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:14px;padding:18px 22px;font-weight:600;font-size:16px}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::after{content:"+";font-family:"Playfair Display";font-size:22px;line-height:1;color:var(--accent);transition:transform .25s;flex:0 0 auto}
+  .faq details[open] summary::after{transform:rotate(45deg)}
+  .faq .a{padding:0 22px 20px;color:var(--soft);font-size:14.5px;line-height:1.6}
+  .faq .a a{color:var(--accent)}
+
+  /* personalized read on the result */
+  p.insight{font-family:"Playfair Display";font-style:italic;font-size:17px;color:var(--accent);max-width:440px;margin:14px auto 0}
+
+  /* footer */
+  .foot{border-top:1px solid var(--line);margin-top:26px;padding:34px 0 42px}
+  .foot-grid{display:flex;justify-content:space-between;align-items:flex-start;gap:26px;flex-wrap:wrap}
+  .foot .mark{font-size:20px}
+  .foot .fan-mark i{width:5px;height:18px}
+  .foot-tag{color:var(--soft);font-size:13.5px;margin-top:8px;max-width:330px}
+  .foot-nav{display:flex;gap:22px;flex-wrap:wrap;padding-top:8px}
+  .foot-nav a{color:var(--ink);text-decoration:none;font-size:13.5px;font-weight:600}
+  .foot-nav a:hover{color:var(--accent)}
+  .foot-fine{color:var(--soft);font-size:12px;margin-top:24px}
+  .price a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+
   canvas{display:none}
 
   @media(max-width:860px){
@@ -348,6 +387,41 @@
       <div class="proof-row" id="proofRow"></div>
     </div>
   </div>
+
+  <div class="faq" id="faq">
+    <div class="wrap">
+      <div class="proof-head">
+        <span class="eyebrow">Good questions</span>
+        <h2 class="serif">Asked before you ask.</h2>
+      </div>
+      <div class="faq-list">
+        <details>
+          <summary>How does HUE find my season?</summary>
+          <div class="a">Five questions read your undertone the way an analyst would — metals, veins, sun response, contrast, whites. Then one selfie, analyzed instantly on your device, measures the depth and softness of your natural coloring. Together they place you in one of the twelve seasons.</div>
+        </details>
+        <details>
+          <summary>Is my photo uploaded anywhere?</summary>
+          <div class="a">Never. Your selfie is analyzed in your browser, on your device — it never touches a server. No accounts, no tracking, no analytics. See the <a href="privacy.html">privacy policy</a>; it's short, because we barely collect anything.</div>
+        </details>
+        <details>
+          <summary>What's in the $9 full report?</summary>
+          <div class="a">Your complete palette of 30+ named shades, the six colors quietly working against you (and why), your makeup formula — the foundation ask, lip and blush shades, eyes — hair direction to take to your colorist, and a wardrobe system: your neutrals, your metals, your prints, and three combinations to steal. One-time purchase, no subscription.</div>
+        </details>
+        <details>
+          <summary>How is this different from a $300 draping?</summary>
+          <div class="a">An in-person analyst drapes dozens of fabrics against your face over a couple of hours — it's the gold standard, and it costs $200–400. HUE uses the same 12-season system, self-served: your answers plus a daylight selfie, in about two minutes. If the result doesn't ring true, retake it in better light — or take the refund.</div>
+        </details>
+        <details>
+          <summary>What if I'm not happy with it?</summary>
+          <div class="a">Every purchase has a <a href="refunds.html">30-day money-back guarantee</a>. Email us, get your $9 back, no questions asked.</div>
+        </details>
+        <details>
+          <summary>Do I need an account?</summary>
+          <div class="a">No account, no sign-up, no emails from us. Your result and your unlock live on your device — and if you ever lose access, your receipt restores it. You never buy twice.</div>
+        </details>
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- QUIZ -->
@@ -404,6 +478,7 @@
       <span class="eyebrow">Your season is</span>
       <h2 class="serif" id="seasonName">Deep Autumn</h2>
       <p id="seasonDesc"></p>
+      <p class="insight" id="insight" hidden></p>
       <div class="chips" id="chips"></div>
     </div>
 
@@ -432,7 +507,7 @@
     <div class="unlock">
       <div id="payBlock">
         <button class="btn btn-ink btn-block" onclick="checkout()">Unlock my full palette — $9 →</button>
-        <div class="price">One-time · instant access · 30-day money-back guarantee</div>
+        <div class="price">One-time · instant access · <a href="refunds.html">30-day money-back guarantee</a></div>
       </div>
       <div id="unlockedBadge" style="display:none">
         <div class="unlocked-note"><svg viewBox="0 0 24 24"><path d="M4.5 12.5l5 5L19.5 7"/></svg> Full report unlocked — it's yours forever on this device</div>
@@ -442,6 +517,24 @@
     <button class="restart" onclick="reset()">Start over</button>
   </div>
 </section>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="mark"><span class="fan-mark"><i style="background:#e0866f"></i><i style="background:#c9a86a"></i><i style="background:#7f9a8f"></i><i style="background:#7a6f9c"></i></span> HUE</div>
+        <p class="foot-tag">Personal color analysis — free to try, $9 for the full report. Your photo never leaves your device.</p>
+      </div>
+      <nav class="foot-nav" aria-label="Site">
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+        <a href="refunds.html">Refunds</a>
+        <a href="mailto:sampetersen909@gmail.com">Contact</a>
+      </nav>
+    </div>
+    <p class="foot-fine">© 2026 HUE · huebloom.app</p>
+  </div>
+</footer>
 
 <div class="toast" id="toast" role="status"></div>
 
@@ -673,17 +766,36 @@ $('file').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;c
   img.onerror=()=>{alert("That image wouldn't load — try another selfie.");};
   img.src=url;});
 
+/* one perceptive line derived from where the selfie and the answers disagreed —
+   only claims backed by the actual signals, and only when the final season is consistent with them */
+let lastInsight=null;
+function makeInsight(photo,season){
+  const qWarm=st.warm, seasonWarm=/Spring|Autumn/.test(season);
+  if(photo){
+    const pWarm=photo.warmSig>18?1:photo.warmSig<-6?-1:0;
+    if(pWarm===1&&qWarm<=0&&seasonWarm)return "Your skin reads warmer in daylight than your answers suggested — we trusted the selfie.";
+    if(pWarm===-1&&qWarm>0&&!seasonWarm)return "Your answers leaned warm, but daylight reads you cooler — we trusted the selfie.";
+    if(photo.s>0.44&&st.chroma<=0)return "There's more natural contrast in your face than you gave yourself credit for.";
+    if(photo.s<0.26&&st.chroma>0)return "Your coloring is softer than your answers suggested — gentler shades will do the lifting.";
+    if(pWarm!==0&&qWarm!==0&&(pWarm>0)===(qWarm>0))return "Your answers and your selfie agree completely — this one wasn't close.";
+  }
+  if(Math.abs(qWarm)>=4)return "Your undertone answers were unambiguous — this one wasn't close.";
+  return null;
+}
 function run(img){
   const steps=["Detecting undertone","Measuring depth & contrast","Matching your seasonal palette","Composing your colors"];
   let i=0;$('stepText').textContent=steps[0];
   const iv=setInterval(()=>{i++;if(i<steps.length)$('stepText').textContent=steps[i];},620);
-  let season;try{season=decideSeason(analyzePhoto(img));}catch(err){season=decideSeason(null);}
+  let photo=null;try{photo=analyzePhoto(img);}catch(err){photo=null;}
+  const season=decideSeason(photo);
+  lastInsight=makeInsight(photo,season);
   setTimeout(()=>{clearInterval(iv);render(season);},2600);
 }
 function render(season){
   currentSeason=season;const d=SEASONS[season];
   document.documentElement.style.setProperty('--tint',d.tint);
   $('seasonName').textContent=season;$('cardSeason').textContent=season;$('seasonDesc').textContent=d.desc;
+  const ins=$('insight');ins.hidden=!lastInsight;ins.textContent=lastInsight||'';
   $('cardBand').innerHTML=d.band.map(c=>`<i style="background:${c}"></i>`).join('');
   const parts=season.split(' ');
   $('chips').innerHTML=[parts[0], parts[1], /Spring|Autumn/.test(season)?'Warm undertone':'Cool undertone']
@@ -809,7 +921,7 @@ async function shareResult(){
     else{if(navigator.clipboard)navigator.clipboard.writeText(text).catch(()=>{});toast('Copied — paste it anywhere to share.');}
   }
 }
-function reset(){$('file').value='';st.i=0;st.answers=[];st.warm=st.light=st.chroma=0;document.documentElement.style.setProperty('--tint','#f7f2ef');show('intro');}
+function reset(){$('file').value='';st.i=0;st.answers=[];st.warm=st.light=st.chroma=0;lastInsight=null;document.documentElement.style.setProperty('--tint','#f7f2ef');show('intro');}
 
 buildDecks();
 
