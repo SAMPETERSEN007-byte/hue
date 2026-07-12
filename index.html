@@ -72,8 +72,7 @@
     --cut:50%;background:var(--rose);outline-offset:4px}
   .mirror:focus-visible{outline:2px solid var(--accent)}
   .mirror img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
-  .mirror .before-pane{position:absolute;inset:0;clip-path:inset(0 calc(100% - var(--cut)) 0 0);filter:saturate(.72) contrast(.96)}
-  .mirror .before-pane::after{content:"";position:absolute;inset:0;background:rgba(120,130,150,.14);mix-blend-mode:saturation}
+  .mirror .before-pane{position:absolute;inset:0;clip-path:inset(0 calc(100% - var(--cut)) 0 0)}
   .m-label{position:absolute;bottom:18px;font-size:10.5px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;
     padding:6px 12px;border-radius:999px;background:rgba(247,242,239,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);pointer-events:none}
   .m-label-l{left:16px;color:var(--soft)}
@@ -89,6 +88,20 @@
     background:rgba(255,251,249,.95);border:1px solid var(--line);border-radius:999px;padding:7px 15px;box-shadow:var(--shadow-sm);white-space:nowrap}
   .m-caption{text-align:center;color:var(--soft);font-size:14px;margin-top:16px}
   .m-caption em{font-family:"Playfair Display";font-style:italic;color:var(--ink)}
+
+  /* transformation gallery — mini mirrors */
+  .gallery{padding:30px 0 56px}
+  .gal-sub{color:var(--soft);font-size:15px;max-width:430px;margin:12px auto 0}
+  .gal-row{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;max-width:960px;margin:34px auto 0}
+  .gal-card{margin:0}
+  .gal-card .mirror{border-radius:150px 150px 20px 20px}
+  .gal-card .m-handle{font-size:12px;padding:5px 12px;top:76%}
+  .gal-card .m-chip{right:10px;bottom:10px;padding:6px 11px 6px 8px}
+  .gal-card .m-chip i{width:10px;height:10px}
+  .gal-card .m-chip b{font-size:11.5px}
+  .gal-card figcaption{text-align:center;color:var(--soft);font-size:13.5px;margin-top:13px;line-height:1.45;padding:0 6px}
+  .gal-card figcaption em{font-family:"Playfair Display";font-style:italic;color:var(--accent)}
+  .gal-note{text-align:center;color:var(--soft);font-size:11.5px;letter-spacing:.06em;margin-top:26px}
 
   /* proof — real people, real seasons */
   .proof{padding:26px 0 64px}
@@ -230,6 +243,8 @@
     .m-chip{right:12px;bottom:12px}
     .hero h1{font-size:clamp(40px,10.5vw,56px)}
     .proof-row{grid-template-columns:1fr;max-width:340px}
+    .gal-row{grid-template-columns:1fr;max-width:300px;gap:34px}
+    .gallery .proof-head h2 br{display:none}
     .p-card:nth-child(even){transform:rotate(1.1deg)}
     .palette{grid-template-columns:repeat(4,1fr)}
     .top{padding:22px 0 6px}
@@ -275,6 +290,46 @@
           <p class="m-caption">Same face, same light. <em>Only the colors changed.</em></p>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="gallery" id="gallery">
+    <div class="wrap">
+      <div class="proof-head">
+        <span class="eyebrow">Twelve seasons — every face has one</span>
+        <h2 class="serif">Wrong colors happen<br>to beautiful people.</h2>
+        <p class="gal-sub">Drag each mirror. Same photo, same light — only the palette changes.</p>
+      </div>
+      <div class="gal-row">
+        <figure class="gal-card">
+          <div class="mirror" data-season="Deep Autumn" role="slider" tabindex="0" aria-label="Compare icy colors with her Deep Autumn colors" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+            <img src="assets/gal-autumn-after.jpg" alt="Woman glowing in her Deep Autumn colors" draggable="false" loading="lazy" />
+            <div class="before-pane"><img src="assets/gal-autumn-before.jpg" alt="The same woman drained by icy cool colors" draggable="false" loading="lazy" /></div>
+            <div class="m-chip"></div>
+            <div class="m-divider"><span class="m-handle">drag</span></div>
+          </div>
+          <figcaption>Icy grey washed her out.<br><em>Deep Autumn</em> brought her back.</figcaption>
+        </figure>
+        <figure class="gal-card">
+          <div class="mirror" data-season="True Spring" role="slider" tabindex="0" aria-label="Compare dusty colors with her True Spring colors" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+            <img src="assets/gal-spring-after.jpg" alt="Woman glowing in her True Spring colors" draggable="false" loading="lazy" />
+            <div class="before-pane"><img src="assets/gal-spring-before.jpg" alt="The same woman dimmed by dusty muted colors" draggable="false" loading="lazy" /></div>
+            <div class="m-chip"></div>
+            <div class="m-divider"><span class="m-handle">drag</span></div>
+          </div>
+          <figcaption>Dusty mauve dimmed her.<br><em>True Spring</em> turned the light on.</figcaption>
+        </figure>
+        <figure class="gal-card">
+          <div class="mirror" data-season="Soft Summer" role="slider" tabindex="0" aria-label="Compare loud colors with her Soft Summer colors" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+            <img src="assets/gal-summer-after.jpg" alt="Woman glowing in her Soft Summer colors" draggable="false" loading="lazy" />
+            <div class="before-pane"><img src="assets/gal-summer-before.jpg" alt="The same woman overwhelmed by loud hot colors" draggable="false" loading="lazy" /></div>
+            <div class="m-chip"></div>
+            <div class="m-divider"><span class="m-handle">drag</span></div>
+          </div>
+          <figcaption>Hot tones swallowed her.<br><em>Soft Summer</em> let her through.</figcaption>
+        </figure>
+      </div>
+      <p class="gal-note">Styled demonstrations of the 12-season system · your season is found from your quiz + selfie</p>
     </div>
   </div>
 
@@ -469,16 +524,15 @@ const $=id=>document.getElementById(id);
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));$(id).classList.add('on');window.scrollTo(0,0);}
 function rgb2hsl(r,g,b){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b);let h,s,l=(mx+mn)/2;if(mx===mn){h=s=0;}else{const d=mx-mn;s=l>.5?d/(2-mx-mn):d/(mx+mn);switch(mx){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;default:h=(r-g)/d+4;}h/=6;}return[h*360,s,l];}
 
-/* hero mirror — before/after drape slider */
-(function(){
-  const m=$('mirror');if(!m)return;
+/* before/after drape sliders — hero + gallery */
+function initMirror(m,opts){
+  if(!m)return;opts=opts||{};
   let cut=50;
   const set=v=>{cut=Math.max(6,Math.min(94,v));m.style.setProperty('--cut',cut+'%');m.setAttribute('aria-valuenow',Math.round(cut));};
-  const chipSeason='True Winter';
-  $('mChip').innerHTML=SEASONS[chipSeason].band.map(c=>`<i style="background:${c}"></i>`).join('')+`<b>${chipSeason}</b>`;
+  const chip=m.querySelector('.m-chip'),season=opts.season;
+  if(chip&&season&&SEASONS[season])chip.innerHTML=SEASONS[season].band.map(c=>`<i style="background:${c}"></i>`).join('')+`<b>${season}</b>`;
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(reduce){set(50);}
-  else{
+  if(opts.glide&&!reduce){
     set(88);
     const t0=performance.now(),dur=1400,from=88,to=50;
     requestAnimationFrame(function step(t){
@@ -487,7 +541,7 @@ function rgb2hsl(r,g,b){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.mi
       set(from+(to-from)*e);
       if(p<1)requestAnimationFrame(step);
     });
-  }
+  }else set(50);
   const move=x=>{const r=m.getBoundingClientRect();m._touched=true;set((x-r.left)/r.width*100);};
   let drag=false;
   m.addEventListener('pointerdown',e=>{drag=true;try{m.setPointerCapture(e.pointerId)}catch(err){}move(e.clientX);});
@@ -498,7 +552,9 @@ function rgb2hsl(r,g,b){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.mi
     if(e.key==='ArrowLeft'){m._touched=true;set(cut-4);e.preventDefault();}
     if(e.key==='ArrowRight'){m._touched=true;set(cut+4);e.preventDefault();}
   });
-})();
+}
+initMirror($('mirror'),{glide:true,season:'True Winter'});
+document.querySelectorAll('#gallery .mirror').forEach(el=>initMirror(el,{season:el.dataset.season}));
 
 /* proof cards — REAL people + REAL quotes only. Section stays hidden while empty.
    Add entries as {img:"assets/proof-1.jpg", season:"Deep Autumn", quote:"…", name:"Mia"} */
