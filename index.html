@@ -441,7 +441,7 @@ window.track=function(ev,props){try{if(/^phc_/.test(window.HUE_PH_KEY)&&window.p
             <picture><source srcset="assets/hero-after.webp" type="image/webp"><img src="assets/hero-after.jpg" alt="Woman draped in her season's jewel tones, glowing" draggable="false" fetchpriority="high" decoding="async" /></picture>
             <div class="before-pane"><picture><source srcset="assets/hero-before.webp" type="image/webp"><img src="assets/hero-before.jpg" alt="The same woman in the wrong colors, washed out" draggable="false" fetchpriority="high" decoding="async" /></picture></div>
             <span class="m-label m-label-l">the wrong colors</span>
-            <div class="m-chip" id="mChip"><b>True Winter</b></div>
+            <div class="m-chip" id="mChip"><b>Deep Winter</b></div>
             <div class="m-divider"><span class="m-handle">drag</span></div>
           </div>
           <p class="m-caption">Same face, same light. <em>Only the colors changed.</em></p>
@@ -868,7 +868,7 @@ function initMirror(m,opts){
     if(e.key==='ArrowRight'){m._touched=true;set(cut+4);e.preventDefault();}
   });
 }
-initMirror($('mirror'),{glide:true,season:'True Winter'});
+initMirror($('mirror'),{glide:true,season:'Deep Winter'});
 document.querySelectorAll('#gallery .mirror').forEach(el=>initMirror(el,{season:el.dataset.season}));
 
 /* proof cards — REAL people + REAL quotes only. Section stays hidden while empty.
