@@ -32,7 +32,7 @@
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
-{"@type":"Question","name":"How does HUE find my season?","acceptedAnswer":{"@type":"Answer","text":"Five questions read your undertone the way an analyst would — metals, veins, sun response, contrast, whites. Then one selfie, analyzed instantly on your device, measures the depth and softness of your natural coloring. Together they place you in one of the twelve seasons."}},
+{"@type":"Question","name":"How does HUE find my season?","acceptedAnswer":{"@type":"Answer","text":"One selfie, analyzed instantly on your device, is the primary read — it locates your face and measures your undertone, your depth, and the contrast of your natural coloring, the way an analyst reads a draping. Five quick questions — metals, veins, sun response, contrast, whites — sharpen the placement. Together they land you in one of the twelve seasons."}},
 {"@type":"Question","name":"Is my photo uploaded anywhere?","acceptedAnswer":{"@type":"Answer","text":"Never. Your selfie is analyzed in your browser, on your device — it never touches a server. No accounts, no tracking, no analytics."}},
 {"@type":"Question","name":"What's in the $9 full report?","acceptedAnswer":{"@type":"Answer","text":"Your complete palette of 30+ named shades, the six colors quietly working against you (and why), your makeup formula, hair direction to take to your colorist, and a wardrobe system: neutrals, metals, prints, and three combinations to steal. One-time purchase, no subscription."}},
 {"@type":"Question","name":"How is this different from a $300 draping?","acceptedAnswer":{"@type":"Answer","text":"An in-person analyst drapes dozens of fabrics against your face over a couple of hours — it's the gold standard, and it costs $200–400. HUE uses the same 12-season system, self-served: your answers plus a daylight selfie, in about two minutes."}},
@@ -515,7 +515,7 @@ window.track=function(ev,props){try{if(/^phc_/.test(window.HUE_PH_KEY)&&window.p
           <span class="m-num">02</span>
           <div>
             <h3>The selfie read</h3>
-            <p>One daylight photo, measured entirely on your device — it never leaves your phone. The selfie sets what answers can't: the exact depth and softness of your natural coloring.</p>
+            <p>One daylight photo, measured entirely on your device — it never leaves your phone. This is the primary read: your undertone, your depth, and the contrast between your hair and skin — measured from pixels, the way an analyst reads a draping.</p>
           </div>
         </div>
         <div class="m-step">
@@ -583,7 +583,7 @@ window.track=function(ev,props){try{if(/^phc_/.test(window.HUE_PH_KEY)&&window.p
       <div class="faq-list">
         <details>
           <summary>How does HUE find my season?</summary>
-          <div class="a">Five questions read your undertone the way an analyst would — metals, veins, sun response, contrast, whites. Then one selfie, analyzed instantly on your device, measures the depth and softness of your natural coloring. Together they place you in one of the twelve seasons.</div>
+          <div class="a">One selfie, analyzed instantly on your device, is the primary read — it locates your face and measures your undertone, your depth, and the contrast of your natural coloring, the way an analyst reads a draping. Five quick questions — metals, veins, sun response, contrast, whites — sharpen the placement. Together they land you in one of the twelve seasons.</div>
         </details>
         <details>
           <summary>Is my photo uploaded anywhere?</summary>
@@ -953,15 +953,112 @@ function quizBack(){
 }
 
 /* ---- analysis ---- */
+/* ---- the visual engine ----
+   The selfie is the primary read — the way an analyst drapes you, done in pixels.
+   1. FIND the face: adaptive skin detection in YCbCr (robust across skin depths and
+      lighting — no fixed center circle, no absolute RGB floors), then the largest
+      connected skin region becomes the face box.
+   2. READ the three axes from it: undertone from the skin's warm/cool balance,
+      depth from skin lightness, clarity from the MEASURED hair-to-skin contrast
+      (sampled just above the face box) blended with skin saturation.
+   3. REFUSE gracefully: no face-sized region or unreadable light -> null,
+      and the UI asks for one retake instead of guessing. */
 function analyzePhoto(img){
   const cv=$('cv'),ctx=cv.getContext('2d'),S=260;ctx.drawImage(img,0,0,S,S);
-  const cx=S/2,cy=S*0.46,rad=S*0.30,d=ctx.getImageData(0,0,S,S).data;let R=0,G=0,B=0,n=0;
-  for(let y=0;y<S;y+=2)for(let x=0;x<S;x+=2){if((x-cx)**2+(y-cy)**2>rad*rad)continue;const i=(y*S+x)*4,r=d[i],g=d[i+1],b=d[i+2];
-    if(r>60&&g>40&&b>30&&r>=g&&g>=b-12&&(r-b)>8&&(r+g+b)<720){R+=r;G+=g;B+=b;n++;}}
-  if(n<40){R=G=B=n=0;for(let y=0;y<S;y+=2)for(let x=0;x<S;x+=2){if((x-cx)**2+(y-cy)**2>rad*rad)continue;const i=(y*S+x)*4;R+=d[i];G+=d[i+1];B+=d[i+2];n++;}}
-  if(!n)return null;
-  R/=n;G/=n;B/=n;const [,s,l]=rgb2hsl(R,G,B);
-  return {warmSig:R-B, l, s};
+  const d=ctx.getImageData(0,0,S,S).data;
+  const G=26,C=S/G;
+  const isSkin=(r,g,b)=>{
+    const y=.299*r+.587*g+.114*b;
+    const cb=128-.168736*r-.331264*g+.5*b;
+    const cr=128+.5*r-.418688*g-.081312*b;
+    return y>38&&y<246&&cb>=77&&cb<=127&&cr>=133&&cr<=177;
+  };
+  const grid=new Float32Array(G*G),vGrid=new Float32Array(G*G);
+  for(let gy=0;gy<G;gy++)for(let gx=0;gx<G;gx++){
+    let n=0,t=0,sy=0,sy2=0;
+    for(let y=gy*C;y<(gy+1)*C;y+=2)for(let x=gx*C;x<(gx+1)*C;x+=2){
+      const i=((y|0)*S+(x|0))*4,r=d[i],g=d[i+1],b=d[i+2];t++;
+      if(isSkin(r,g,b))n++;
+      const ly=.299*r+.587*g+.114*b;sy+=ly;sy2+=ly*ly;
+    }
+    grid[gy*G+gx]=n/t;
+    vGrid[gy*G+gx]=sy2/t-(sy/t)*(sy/t);
+  }
+  /* a skin cell must also have texture — beige walls are skin-chromatic but FLAT,
+     faces are not (features, shading). var>=6 keeps cheeks, rejects painted walls. */
+  const okCell=c=>grid[c]>=.4&&vGrid[c]>=6;
+  const seen=new Uint8Array(G*G);let best=null;
+  for(let s0=0;s0<G*G;s0++){
+    if(seen[s0]||!okCell(s0))continue;
+    const q=[s0];seen[s0]=1;const cells=[];
+    while(q.length){
+      const c=q.pop();cells.push(c);
+      const cy0=(c/G)|0,cx0=c%G;
+      for(const [dy,dx] of [[0,1],[0,-1],[1,0],[-1,0]]){
+        const ny=cy0+dy,nx=cx0+dx;
+        if(ny<0||nx<0||ny>=G||nx>=G)continue;
+        const j=ny*G+nx;
+        if(!seen[j]&&okCell(j)){seen[j]=1;q.push(j);}
+      }
+    }
+    if(!best||cells.length>best.length)best=cells;
+  }
+  if(!best||best.length<Math.round(G*G*.055))return null;
+  /* gray-world sample of the scene's light: midtone pixels OUTSIDE the face component
+     (includes skin-chromatic flat walls, which is exactly what we want to measure) */
+  const inComp=new Uint8Array(G*G);for(const c of best)inComp[c]=1;
+  let bgR=0,bgB=0,bgN=0;
+  for(let c=0;c<G*G;c++){
+    if(inComp[c])continue;
+    const gy=(c/G)|0,gx=c%G;
+    for(let y=gy*C;y<(gy+1)*C;y+=4)for(let x=gx*C;x<(gx+1)*C;x+=4){
+      const i=((y|0)*S+(x|0))*4,r=d[i],b=d[i+2];
+      const ly=.299*r+.587*d[i+1]+.114*b;
+      if(ly>50&&ly<235){bgR+=r;bgB+=b;bgN++;}
+    }
+  }
+  let x0=G,x1=0,y0=G,y1=0;
+  for(const c of best){const cy0=(c/G)|0,cx0=c%G;if(cx0<x0)x0=cx0;if(cx0>x1)x1=cx0;if(cy0<y0)y0=cy0;if(cy0>y1)y1=cy0;}
+  let R=0,Gc=0,B=0,n=0;
+  for(const c of best){
+    const gy=(c/G)|0,gx=c%G;
+    for(let y=gy*C;y<(gy+1)*C;y+=2)for(let x=gx*C;x<(gx+1)*C;x+=2){
+      const i=((y|0)*S+(x|0))*4,r=d[i],g=d[i+1],b=d[i+2];
+      if(isSkin(r,g,b)){R+=r;Gc+=g;B+=b;n++;}
+    }
+  }
+  if(n<60)return null;
+  R/=n;Gc/=n;B/=n;
+  const [,satRaw,lSkin]=rgb2hsl(R,Gc,B);
+  /* hair band: from just above the face box down into its top third — melanin-colored
+     hair (brown/blonde) is chromatically skin and merges into the blob, so sample
+     inside the top too. Exclude forehead look-alikes (skin-classified AND near skin
+     luma), then take the darkest 30% of what remains. */
+  const bandY0=Math.max(0,(y0-4)*C), bandY1=Math.min(S,Math.round((y0+(y1-y0+1)*.35)*C));
+  const lum=[];
+  for(let y=bandY0;y<bandY1;y+=2)for(let x=x0*C;x<(x1+1)*C&&x<S;x+=2){
+    const i=((y|0)*S+(x|0))*4,r=d[i],g=d[i+1],b=d[i+2];
+    const ly=(.299*r+.587*g+.114*b)/255;
+    if(isSkin(r,g,b)&&Math.abs(ly-lSkin)<.09)continue;
+    lum.push(ly);
+  }
+  let lHair=lSkin;
+  if(lum.length>40){
+    lum.sort((a,b)=>a-b);
+    const cut=Math.max(8,Math.round(lum.length*.3));let s2=0;
+    for(let i2=0;i2<cut;i2++)s2+=lum[i2];
+    lHair=s2/cut;
+  }
+  const contrast=Math.min(.6,Math.abs(lSkin-lHair));
+  /* clarity the way an analyst reads it: feature contrast, steadied by skin saturation
+     (calibrated to the bright>0.44 / soft<0.26 axis: blonde-on-fair ~.25 soft,
+      brown-on-medium ~.38 true, black-on-fair ~.46 bright) */
+  const chromaAxis=Math.max(0,Math.min(1,.6*satRaw+.45*contrast));
+  /* gray-world white balance: warm lamplight warms the whole scene, not just skin —
+     discount the background's own warmth so lighting doesn't read as undertone */
+  let warmSig=R-B;
+  if(bgN>500)warmSig-=.6*(bgR/bgN-bgB/bgN);
+  return {warmSig, l:lSkin, s:chromaAxis, satRaw, contrast, hairL:lHair, faceCells:best.length};
 }
 function mapSeason(warm,depth,chroma){
   // depth (deep/light) is the most defining axis, so it is checked first.
@@ -973,7 +1070,11 @@ function decideSeason(photo){
   // Blend the quiz (reliable for undertone) with the photo (depth + chroma).
   let warmScore=st.warm, depth=0.55, chroma=0.34;
   if(photo){
-    warmScore += photo.warmSig>18?1.5 : photo.warmSig<-6?-1.5:0;
+    /* the selfie is the primary undertone read: the proven mild thresholds (18/-6,
+       asymmetric because skin R-B skews positive) stay at ±1.5; clearly extreme
+       reads earn ±3 and outvote a hesitant quiz */
+    const w=photo.warmSig;
+    warmScore += w>40?3 : w>18?1.5 : w<-20?-3 : w<-6?-1.5 : 0;
     depth=photo.l; chroma=photo.s;
   }
   depth  = Math.max(0,Math.min(1, depth  + st.light *0.05));
@@ -1033,14 +1134,24 @@ function makeInsight(photo,season){
   if(Math.abs(qWarm)>=4)return "Your undertone answers were unambiguous — this one wasn't close.";
   return null;
 }
+let photoTries=0;
 function run(img){
+  let photo=null;try{photo=analyzePhoto(img);}catch(err){photo=null;}
+  /* unreadable photo: ask for ONE retake instead of guessing — after that,
+     proceed on the answers and say so honestly */
+  if(!photo&&photoTries<1){
+    photoTries++;
+    show('capture');
+    toast("We couldn't read your face in that light — try facing a window, a little closer.");
+    track('selfie_unreadable');
+    return;
+  }
   const steps=["Detecting undertone","Measuring depth & contrast","Matching your seasonal palette","Composing your colors"];
   let i=0;$('stepText').textContent=steps[0];
   const iv=setInterval(()=>{i++;if(i<steps.length)$('stepText').textContent=steps[i];},620);
-  let photo=null;try{photo=analyzePhoto(img);}catch(err){photo=null;}
-  track('selfie_analyzed');
+  track('selfie_analyzed',{readable:!!photo});
   const season=decideSeason(photo);
-  lastInsight=makeInsight(photo,season);
+  lastInsight=photo?makeInsight(photo,season):"That light was hard to read, so this leans on your answers — retake in daylight anytime to sharpen it.";
   setTimeout(()=>{clearInterval(iv);render(season);},2600);
 }
 function runQuizOnly(){
@@ -1221,7 +1332,7 @@ async function shareResult(){
     else{if(navigator.clipboard)navigator.clipboard.writeText(text).catch(()=>{});toast('Copied — paste it anywhere to share.');}
   }
 }
-function reset(){$('file').value='';$('fileUp').value='';st.i=0;st.answers=[];st.warm=st.light=st.chroma=0;lastInsight=null;document.documentElement.style.setProperty('--tint','#f7f2ef');show('intro');}
+function reset(){$('file').value='';$('fileUp').value='';st.i=0;st.answers=[];st.warm=st.light=st.chroma=0;lastInsight=null;photoTries=0;document.documentElement.style.setProperty('--tint','#f7f2ef');show('intro');}
 
 buildDecks();
 
