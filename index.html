@@ -22,7 +22,8 @@
 <meta name="theme-color" content="#f7f2ef" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232b2129'/%3E%3Crect x='6.5' y='7.5' width='3.4' height='17' rx='1.7' fill='%23e0866f'/%3E%3Crect x='11.4' y='7.5' width='3.4' height='17' rx='1.7' fill='%23c9a86a'/%3E%3Crect x='16.3' y='7.5' width='3.4' height='17' rx='1.7' fill='%237f9a8f'/%3E%3Crect x='21.2' y='7.5' width='3.4' height='17' rx='1.7' fill='%237a6f9c'/%3E%3C/svg%3E" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-<link rel="preload" as="font" type="font/woff2" href="assets/fonts/playfair-var.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="assets/fonts/bodoni-moda-var.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="assets/fonts/bodoni-moda-var-italic.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/general-sans-400.woff2" crossorigin>
 <link rel="preload" as="image" href="assets/hero-after.webp" type="image/webp" fetchpriority="high">
 <link rel="preload" as="image" href="assets/hero-before.webp" type="image/webp" fetchpriority="high">
@@ -40,8 +41,8 @@
 ]}
 </script>
 <style>
-  @font-face{font-family:"Playfair Display";font-style:normal;font-weight:400 700;font-display:swap;src:url(assets/fonts/playfair-var.woff2) format("woff2")}
-  @font-face{font-family:"Playfair Display";font-style:italic;font-weight:400 700;font-display:swap;src:url(assets/fonts/playfair-var-italic.woff2) format("woff2")}
+  @font-face{font-family:"Bodoni Moda";font-style:normal;font-weight:400 900;font-display:swap;src:url(assets/fonts/bodoni-moda-var.woff2) format("woff2")}
+  @font-face{font-family:"Bodoni Moda";font-style:italic;font-weight:400 900;font-display:swap;src:url(assets/fonts/bodoni-moda-var-italic.woff2) format("woff2")}
   @font-face{font-family:"General Sans";font-style:normal;font-weight:400;font-display:swap;src:url(assets/fonts/general-sans-400.woff2) format("woff2")}
   @font-face{font-family:"General Sans";font-style:normal;font-weight:500;font-display:swap;src:url(assets/fonts/general-sans-500.woff2) format("woff2")}
   @font-face{font-family:"General Sans";font-style:normal;font-weight:600;font-display:swap;src:url(assets/fonts/general-sans-600.woff2) format("woff2")}
@@ -56,7 +57,7 @@
   html{scroll-behavior:smooth}
   body{font-family:"General Sans",-apple-system,sans-serif;color:var(--ink);background:var(--tint);
     transition:background 1.1s cubic-bezier(.4,0,.2,1);-webkit-font-smoothing:antialiased;line-height:1.55;min-height:100vh;overflow-x:hidden}
-  .serif{font-family:"Playfair Display",Georgia,serif;font-optical-sizing:auto;letter-spacing:-.01em}
+  .serif{font-family:"Bodoni Moda",Georgia,serif;font-optical-sizing:auto;letter-spacing:0}
   .wrap{max-width:1060px;margin:0 auto;padding:0 24px}
   .screen{display:none}
   .screen.on{display:block;animation:rise .7s cubic-bezier(.2,.7,.2,1)}
@@ -64,21 +65,28 @@
   @keyframes fade{from{opacity:0}to{opacity:1}}
 
   .eyebrow{font-weight:600;font-size:11.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--accent)}
-  .btn{font-family:"General Sans";font-weight:600;font-size:16px;border:0;border-radius:999px;padding:17px 30px;cursor:pointer;
-    transition:transform .16s ease,box-shadow .18s ease,background .25s,color .25s;display:inline-flex;align-items:center;gap:10px}
+  .btn{font-family:"General Sans";font-weight:600;font-size:12.5px;letter-spacing:.17em;text-transform:uppercase;border:0;border-radius:2px;padding:19px 32px;cursor:pointer;
+    transition:transform .16s ease,box-shadow .18s ease,background .25s,color .25s;display:inline-flex;align-items:center;justify-content:center;gap:10px;text-align:center;line-height:1.5}
   .btn:active{transform:translateY(1px)}
   .btn:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-  .btn-ink{background:var(--ink);color:#fff9f4;box-shadow:0 16px 34px -16px rgba(43,33,41,.6)}
-  .btn-ink:hover{box-shadow:0 22px 44px -16px rgba(43,33,41,.72);transform:translateY(-1px)}
-  .btn-ghost{background:transparent;color:var(--ink);border:1.5px solid rgba(43,33,41,.28)}
+  .btn-ink{background:var(--ink);color:#fff9f4;box-shadow:0 14px 30px -18px rgba(43,33,41,.55)}
+  .btn-ink:hover{box-shadow:0 20px 40px -18px rgba(43,33,41,.68);transform:translateY(-1px)}
+  .btn-cream{background:#f6efe9;color:var(--ink)}
+  .btn-cream:hover{transform:translateY(-1px);box-shadow:0 18px 36px -20px rgba(0,0,0,.5)}
+  .btn-ghost{background:transparent;color:var(--ink);border:1px solid rgba(43,33,41,.32)}
   .btn-ghost:hover{border-color:var(--ink)}
   .btn-block{width:100%;justify-content:center}
 
-  /* top bar */
-  .top{display:flex;align-items:center;justify-content:space-between;padding:30px 0 8px}
-  .mark{font-family:"Playfair Display";font-weight:600;font-size:25px;letter-spacing:.01em;display:flex;align-items:center;gap:12px}
+  /* masthead */
+  .masthead{border-bottom:1px solid var(--line);margin-bottom:4px}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:26px 0 22px}
+  .mark{font-family:"Bodoni Moda";font-weight:600;font-size:25px;letter-spacing:.01em;display:flex;align-items:center;gap:12px}
   .fan-mark{display:flex;gap:3px}.fan-mark i{width:6px;height:22px;border-radius:3px}
-  .who{font-size:12px;color:var(--soft);font-weight:500;letter-spacing:.06em}
+  .brand-left{display:flex;align-items:center}
+  .who{font-size:11px;color:var(--soft);font-weight:600;letter-spacing:.2em;text-transform:uppercase;margin-left:18px;padding-left:18px;border-left:1px solid var(--line)}
+  .topnav a{font-size:11.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);text-decoration:none;margin-left:30px;transition:color .2s}
+  .topnav a:hover{color:var(--accent)}
+  body.flow .topnav{display:none}
 
   /* HERO */
   .hero{padding-top:52px;padding-bottom:40px}
@@ -105,18 +113,18 @@
   .m-chip{position:absolute;right:14px;bottom:14px;display:flex;align-items:center;gap:7px;background:rgba(255,251,249,.9);
     -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-radius:999px;padding:8px 14px 8px 10px;box-shadow:var(--shadow-sm);pointer-events:none}
   .m-chip i{width:13px;height:13px;border-radius:50%;margin-right:-4px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.05)}
-  .m-chip b{font-family:"Playfair Display";font-weight:500;font-size:13.5px;margin-left:6px}
+  .m-chip b{font-family:"Bodoni Moda";font-weight:500;font-size:13.5px;margin-left:6px}
   .m-divider{position:absolute;top:0;bottom:0;left:var(--cut);width:0;pointer-events:none}
   .m-divider::before{content:"";position:absolute;top:0;bottom:0;left:-1px;width:2px;
     background:linear-gradient(to bottom,transparent,rgba(255,251,249,.95) 12%,rgba(255,251,249,.95) 88%,transparent)}
   .m-handle{position:absolute;top:71%;left:0;transform:translate(-50%,-50%);
-    font-family:"Playfair Display";font-style:italic;font-size:14px;color:var(--ink);
+    font-family:"Bodoni Moda";font-style:italic;font-size:14px;color:var(--ink);
     background:rgba(255,251,249,.95);border:1px solid var(--line);border-radius:999px;padding:7px 15px;box-shadow:var(--shadow-sm);white-space:nowrap}
   .m-caption{text-align:center;color:var(--soft);font-size:14px;margin-top:16px}
-  .m-caption em{font-family:"Playfair Display";font-style:italic;color:var(--ink)}
+  .m-caption em{font-family:"Bodoni Moda";font-style:italic;color:var(--ink)}
 
   /* transformation gallery — mini mirrors */
-  .gallery{background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:68px 0 76px;margin-top:26px}
+  .gallery{background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:96px 0 104px;margin-top:26px}
   .gal-sub{color:var(--soft);font-size:15px;max-width:430px;margin:12px auto 0}
   .gal-row{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;max-width:960px;margin:34px auto 0}
   .gal-card{margin:0}
@@ -126,7 +134,7 @@
   .gal-card .m-chip i{width:10px;height:10px}
   .gal-card .m-chip b{font-size:11.5px}
   .gal-card figcaption{text-align:center;color:var(--soft);font-size:13.5px;margin-top:13px;line-height:1.45;padding:0 6px}
-  .gal-card figcaption em{font-family:"Playfair Display";font-style:italic;color:var(--accent)}
+  .gal-card figcaption em{font-family:"Bodoni Moda";font-style:italic;color:var(--accent)}
   .gal-note{text-align:center;color:var(--soft);font-size:11.5px;letter-spacing:.06em;margin-top:26px}
 
   /* proof — real people, real seasons */
@@ -141,7 +149,7 @@
   .p-card:hover{transform:rotate(0) translateY(-3px)}
   .p-card img{width:100%;aspect-ratio:1/1.15;object-fit:cover;display:block}
   .p-card .p-band{height:10px;display:flex}.p-card .p-band i{flex:1}
-  .p-card h5{font-family:"Playfair Display";font-weight:500;font-size:20px;margin:14px 0 6px}
+  .p-card h5{font-family:"Bodoni Moda";font-weight:500;font-size:20px;margin:14px 0 6px}
   .p-card q{display:block;font-size:13.5px;color:var(--soft);padding:0 18px;line-height:1.5;quotes:"\201C" "\201D"}
   .p-card .p-name{display:block;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-top:10px}
 
@@ -150,7 +158,7 @@
   .progress{display:flex;align-items:center;justify-content:center;gap:14px;margin:8px 0 30px}
   .deck{display:flex;gap:5px}
   .deck i{width:9px;height:34px;border-radius:5px;background:var(--line);transition:background .5s cubic-bezier(.2,.7,.2,1),transform .5s;transform-origin:bottom}
-  .count{font-family:"Playfair Display";font-style:italic;font-size:15px;color:var(--soft)}
+  .count{font-family:"Bodoni Moda";font-style:italic;font-size:15px;color:var(--soft)}
 
   /* QUIZ */
   .q-kicker{margin-bottom:14px}
@@ -216,7 +224,7 @@
   .locked{filter:saturate(.22) blur(3px)}
   .lockover{position:absolute;inset:-6px;display:grid;place-content:center;text-align:center;gap:10px;
     background:radial-gradient(120% 120% at 50% 42%,var(--card) 40%,transparent);border-radius:16px;padding:18px}
-  .lockover .key{font-size:26px}.lockover b{font-size:19px;font-family:"Playfair Display";font-weight:500}
+  .lockover .key{font-size:26px}.lockover b{font-size:19px;font-family:"Bodoni Moda";font-weight:500}
   .lockover span{font-size:13.5px;color:var(--soft);max-width:300px;margin:0 auto}
   .unlock{max-width:560px;margin:22px auto 0}
   .price{text-align:center;color:var(--soft);font-size:13px;margin-top:11px}
@@ -236,7 +244,7 @@
   .nsw b{font-size:11px;font-weight:600;display:block;margin-top:7px;line-height:1.2}
   .nsw small{font-size:9px;color:var(--soft);letter-spacing:.05em;font-weight:500}
   .report-card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);border:1px solid var(--line);max-width:560px;margin:22px auto 0;padding:28px 30px 30px}
-  .report-card h4{font-family:"Playfair Display";font-weight:500;font-size:24px;margin:4px 0 4px}
+  .report-card h4{font-family:"Bodoni Moda";font-weight:500;font-size:24px;margin:4px 0 4px}
   .report-card .rc-sub{color:var(--soft);font-size:14px;margin-bottom:18px}
   .report-card p{font-size:14.5px;line-height:1.6;margin:0 0 10px}
   .report-card p b{font-weight:600}
@@ -249,7 +257,7 @@
   .mchip{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:6px 13px 6px 7px;font-size:12.5px;font-weight:600;background:#fff}
   .mchip i{width:22px;height:22px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
   .combo{display:flex;gap:14px;align-items:baseline;padding:9px 0}
-  .combo .n{font-family:"Playfair Display";font-style:italic;color:var(--accent);font-size:17px;flex:0 0 18px}
+  .combo .n{font-family:"Bodoni Moda";font-style:italic;color:var(--accent);font-size:17px;flex:0 0 18px}
   .combo p{margin:0;font-size:15px}
   .unlocked-note{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--accent);font-weight:600;font-size:13.5px;letter-spacing:.04em;margin-bottom:4px}
   .unlocked-note svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -258,23 +266,60 @@
     transition:opacity .3s,transform .3s;z-index:80;max-width:88vw;text-align:center}
   .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
-  /* FAQ */
-  .faq{background:#f5e9e6;border-top:1px solid var(--line);padding:68px 0 76px}
-  .faq-list{max-width:640px;margin:30px auto 0;display:grid;gap:12px}
-  .faq details{background:var(--card);border:1px solid #e8d5cf;border-radius:18px;box-shadow:var(--shadow-sm)}
-  .faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:14px;padding:18px 22px;font-weight:600;font-size:16px}
+  /* FAQ — editorial hairline list */
+  .faq{background:#f5e9e6;border-top:1px solid var(--line);padding:96px 0 104px}
+  .faq-list{max-width:640px;margin:34px auto 0}
+  .faq details{border-top:1px solid #decdc7}
+  .faq details:last-of-type{border-bottom:1px solid #decdc7}
+  .faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:14px;padding:21px 2px;font-weight:600;font-size:15.5px}
+  .faq summary:hover{color:var(--accent)}
   .faq summary::-webkit-details-marker{display:none}
-  .faq summary::after{content:"+";font-family:"Playfair Display";font-size:22px;line-height:1;color:var(--accent);transition:transform .25s;flex:0 0 auto}
+  .faq summary::after{content:"+";font-family:"Bodoni Moda";font-size:22px;line-height:1;color:var(--accent);transition:transform .25s;flex:0 0 auto}
   .faq details[open] summary::after{transform:rotate(45deg)}
-  .faq .a{padding:0 22px 20px;color:var(--soft);font-size:14.5px;line-height:1.6}
+  .faq .a{padding:0 2px 24px;color:var(--soft);font-size:14.5px;line-height:1.65;max-width:560px}
   .faq .a a{color:var(--accent)}
 
+  /* THE METHOD — numbered editorial rows + 12-season taxonomy */
+  .method{padding:96px 0 104px}
+  .m-steps{max-width:680px;margin:42px auto 0}
+  .m-step{display:flex;gap:28px;padding:28px 2px;border-top:1px solid #e2d5cf;text-align:left}
+  .m-step:last-child{border-bottom:1px solid #e2d5cf}
+  .m-num{font-family:"Bodoni Moda",Georgia,serif;font-style:italic;font-size:23px;color:var(--accent);flex:0 0 46px;line-height:1.25}
+  .m-step h3{font-size:16px;font-weight:600;margin-bottom:6px;letter-spacing:.01em}
+  .m-step p{color:var(--soft);font-size:15px;line-height:1.62;max-width:520px}
+  .seasons-grid{display:grid;grid-template-columns:repeat(4,1fr);max-width:880px;margin:60px auto 0;border:1px solid var(--line);background:var(--card)}
+  .sg-cell{padding:20px 14px 18px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);text-align:center}
+  .sg-cell:nth-child(4n){border-right:0}
+  .sg-cell:nth-child(n+9){border-bottom:0}
+  .sg-dots{display:flex;gap:4px;justify-content:center;margin-bottom:10px}
+  .sg-dots i{width:9px;height:9px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.04)}
+  .sg-cell b{font-size:12px;font-weight:600;letter-spacing:.05em}
+
+  /* THE FULL REPORT — ink product band */
+  .report-band{background:var(--ink);color:#f6efe9;padding:104px 0 112px}
+  .report-band .eyebrow{color:#d998a3}
+  .rb-grid{display:grid;grid-template-columns:1fr 1fr;gap:70px;align-items:start;max-width:1000px;margin:0 auto}
+  .rb-copy h2{font-size:clamp(34px,4.6vw,52px);font-weight:400;line-height:1.06;margin:16px 0 6px}
+  .rb-copy h2 em{font-style:italic;font-weight:400}
+  .rb-rows{margin-top:30px}
+  .rb-row{padding:15px 2px;border-top:1px solid rgba(246,239,233,.16)}
+  .rb-row:last-child{border-bottom:1px solid rgba(246,239,233,.16)}
+  .rb-row b{font-size:15px;font-weight:600;display:block}
+  .rb-row span{font-size:13.5px;color:rgba(246,239,233,.6);display:block;margin-top:3px;line-height:1.5}
+  .rb-terms{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:rgba(246,239,233,.55);margin:20px 0 24px}
+  .rb-note{font-size:13.5px;color:rgba(246,239,233,.55);margin-top:16px;max-width:400px;line-height:1.55}
+  .rb-card-wrap{margin:0}
+  .rb-card{margin:0;max-width:none;color:var(--ink);box-shadow:0 40px 90px -50px rgba(0,0,0,.8)}
+  .rb-card .named{grid-template-columns:repeat(4,1fr)}
+  .rb-card .avoid-row{border-bottom:0;margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+  .rb-card-wrap figcaption{font-size:12.5px;color:rgba(246,239,233,.55);margin-top:16px;text-align:center;line-height:1.5}
+
   /* personalized read on the result */
-  p.insight{font-family:"Playfair Display";font-style:italic;font-size:17px;color:var(--accent);max-width:440px;margin:14px auto 0}
+  p.insight{font-family:"Bodoni Moda";font-style:italic;font-size:17px;color:var(--accent);max-width:440px;margin:14px auto 0}
   p.insight a{color:var(--accent)}
 
   /* decision block */
-  .anchor-line{font-family:"Playfair Display",serif;font-style:italic;font-size:15px;color:var(--soft);text-align:center;margin:0 0 12px}
+  .anchor-line{font-family:"Bodoni Moda",serif;font-style:italic;font-size:15px;color:var(--soft);text-align:center;margin:0 0 12px}
   #lockwrap{cursor:pointer}
   .lock-cta{font-style:normal;font-weight:600;font-size:12.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
   .mrow{display:flex;gap:12px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line);font-size:14.5px}
@@ -286,15 +331,17 @@
   .ring.noimg{background:conic-gradient(#e0866f 0 25%,#c9a86a 0 50%,#7f9a8f 0 75%,#7a6f9c 0 100%)}
 
   /* footer */
-  .foot{border-top:1px solid var(--line);margin-top:0;padding:38px 0 46px}
-  .foot-grid{display:flex;justify-content:space-between;align-items:flex-start;gap:26px;flex-wrap:wrap}
+  .foot{border-top:1px solid var(--line);margin-top:0;padding:62px 0 54px}
+  .foot-grid{display:flex;justify-content:space-between;align-items:flex-start;gap:40px;flex-wrap:wrap}
   .foot .mark{font-size:20px}
   .foot .fan-mark i{width:5px;height:18px}
-  .foot-tag{color:var(--soft);font-size:13.5px;margin-top:8px;max-width:330px}
-  .foot-nav{display:flex;gap:22px;flex-wrap:wrap;padding-top:8px}
-  .foot-nav a{color:var(--ink);text-decoration:none;font-size:13.5px;font-weight:600}
-  .foot-nav a:hover{color:var(--accent)}
-  .foot-fine{color:var(--soft);font-size:12px;margin-top:24px}
+  .foot-tag{color:var(--soft);font-size:13.5px;margin-top:10px;max-width:330px;line-height:1.6}
+  .foot-cols{display:flex;gap:64px;flex-wrap:wrap}
+  .foot-col{display:flex;flex-direction:column;gap:11px}
+  .foot-col b{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--soft);font-weight:600;margin-bottom:3px}
+  .foot-col a{color:var(--ink);text-decoration:none;font-size:13.5px;font-weight:500}
+  .foot-col a:hover{color:var(--accent)}
+  .foot-fine{color:var(--soft);font-size:12px;margin-top:40px;padding-top:22px;border-top:1px solid var(--line)}
   .price a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 
   canvas{display:none}
@@ -315,10 +362,25 @@
     .hero h1{font-size:clamp(40px,10.5vw,56px)}
     .proof-row{grid-template-columns:1fr;max-width:340px}
     .gal-row{grid-template-columns:1fr;max-width:300px;gap:34px}
-    .gallery{padding:48px 0 54px;margin-top:18px}
-    .faq{padding:48px 0 54px}
+    .gallery{padding:56px 0 64px;margin-top:18px}
+    .faq{padding:56px 0 64px}
     .proof{padding:46px 0 52px}
-    .gallery .proof-head h2 br{display:none}
+    .topnav{display:none}
+    .method{padding:56px 0 64px}
+    .m-steps{margin-top:30px}
+    .m-step{gap:18px;padding:22px 2px}
+    .m-num{flex:0 0 34px;font-size:19px}
+    .seasons-grid{grid-template-columns:repeat(2,1fr);margin-top:44px}
+    .sg-cell:nth-child(4n){border-right:1px solid var(--line)}
+    .sg-cell:nth-child(2n){border-right:0}
+    .sg-cell:nth-child(n+9){border-bottom:1px solid var(--line)}
+    .sg-cell:nth-child(n+11){border-bottom:0}
+    .report-band{padding:64px 0 72px}
+    .rb-grid{grid-template-columns:1fr;gap:44px}
+    .rb-card .named{grid-template-columns:repeat(3,1fr)}
+    .foot-cols{gap:40px}
+    .foot-fine{margin-top:30px}
+    .gallery .proof-head h2 br,.method .proof-head h2 br{display:none}
     .p-card:nth-child(even){transform:rotate(1.1deg)}
     .palette{grid-template-columns:repeat(4,1fr)}
     .top{padding:22px 0 6px}
@@ -345,13 +407,20 @@ window.track=function(ev,props){try{if(/^phc_/.test(window.HUE_PH_KEY)&&window.p
 </head>
 <body>
 
-<div class="wrap top">
-  <div class="mark">
-    <span class="fan-mark"><i style="background:#e0866f"></i><i style="background:#c9a86a"></i><i style="background:#7f9a8f"></i><i style="background:#7a6f9c"></i></span>
-    HUE
+<header class="masthead"><div class="wrap top">
+  <div class="brand-left">
+    <div class="mark">
+      <span class="fan-mark"><i style="background:#e0866f"></i><i style="background:#c9a86a"></i><i style="background:#7f9a8f"></i><i style="background:#7a6f9c"></i></span>
+      HUE
+    </div>
+    <span class="who">Personal color analysis</span>
   </div>
-  <span class="who">Personal color analysis</span>
-</div>
+  <nav class="topnav" aria-label="Sections">
+    <a href="#method">The method</a>
+    <a href="#report-band">The report</a>
+    <a href="#faq">Questions</a>
+  </nav>
+</div></header>
 
 <!-- INTRO -->
 <section class="screen on" id="intro">
@@ -362,7 +431,7 @@ window.track=function(ev,props){try{if(/^phc_/.test(window.HUE_PH_KEY)&&window.p
         <h1 class="serif">Find the colors<br>that make <em>you glow.</em></h1>
         <p class="lede">A few quiet questions, one selfie, and your exact 12-season palette — the colors that light you up, and the ones to retire. The analysis stylists charge <b>$300</b> for.</p>
         <div class="cta-row">
-          <button class="btn btn-ink" onclick="startQuiz()">Find my season →</button>
+          <button class="btn btn-ink" onclick="startQuiz()">Find my season</button>
           <span class="meta" style="flex-basis:100%">Free · two minutes · no sign-up · your photo never leaves your phone</span>
         </div>
       </div>
@@ -385,7 +454,7 @@ window.track=function(ev,props){try{if(/^phc_/.test(window.HUE_PH_KEY)&&window.p
     <div class="wrap">
       <div class="proof-head">
         <span class="eyebrow">Twelve seasons — every face has one</span>
-        <h2 class="serif">Wrong colors happen<br>to beautiful people.</h2>
+        <h2 class="serif">Wrong colors happen <br>to beautiful people.</h2>
         <p class="gal-sub">Drag each mirror. Same photo, same light — only the palette changes.</p>
       </div>
       <div class="gal-row">
@@ -418,9 +487,76 @@ window.track=function(ev,props){try{if(/^phc_/.test(window.HUE_PH_KEY)&&window.p
         </figure>
       </div>
       <p class="gal-note">Styled demonstrations of the 12-season system · your season is found from your quiz + selfie</p>
-      <div style="text-align:center;margin-top:30px">
-        <button class="btn btn-ink" onclick="startQuiz()">Begin my analysis →</button>
-        <p class="meta" style="justify-content:center;margin-top:12px">Free · about 2 minutes · no sign-up</p>
+      <div style="text-align:center;margin-top:34px">
+        <button class="btn btn-ink" onclick="startQuiz()">Begin the analysis</button>
+        <p class="meta" style="justify-content:center;margin-top:14px">Free · about 2 minutes · no sign-up</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="method" id="method">
+    <div class="wrap">
+      <div class="proof-head">
+        <span class="eyebrow">The method</span>
+        <h2 class="serif">Read the way an analyst <br>would read you.</h2>
+      </div>
+      <div class="m-steps">
+        <div class="m-step">
+          <span class="m-num">01</span>
+          <div>
+            <h3>The undertone read</h3>
+            <p>Five questions an analyst would ask first — metals, veins, sun response, contrast, whites. Each answer narrows where your coloring lives.</p>
+          </div>
+        </div>
+        <div class="m-step">
+          <span class="m-num">02</span>
+          <div>
+            <h3>The selfie read</h3>
+            <p>One daylight photo, measured entirely on your device — it never leaves your phone. The selfie sets what answers can't: the exact depth and softness of your natural coloring.</p>
+          </div>
+        </div>
+        <div class="m-step">
+          <span class="m-num">03</span>
+          <div>
+            <h3>The placement</h3>
+            <p>Undertone, depth, chroma — three axes, twelve seasons. Yours is the one where all three agree, and every shade in your palette is chosen for it.</p>
+          </div>
+        </div>
+      </div>
+      <div class="seasons-grid" id="seasonsGrid" role="list" aria-label="The twelve seasons"></div>
+      <p class="gal-note">The 12-season system — the same framework behind a $200–400 in-person draping.</p>
+    </div>
+  </div>
+
+  <div class="report-band" id="report-band">
+    <div class="wrap">
+      <div class="rb-grid">
+        <div class="rb-copy">
+          <span class="eyebrow">The full report</span>
+          <h2 class="serif">What nine dollars<br><em>actually</em> buys.</h2>
+          <div class="rb-rows">
+            <div class="rb-row"><b>30+ named shades</b><span>Your complete palette — every color named, with its exact code.</span></div>
+            <div class="rb-row"><b>Six colors to retire</b><span>The shades quietly working against you, and why.</span></div>
+            <div class="rb-row"><b>Your makeup formula</b><span>The foundation ask, lip and blush shades, eyes.</span></div>
+            <div class="rb-row"><b>Hair direction</b><span>Written to hand straight to your colorist.</span></div>
+            <div class="rb-row"><b>A wardrobe system</b><span>Your neutrals, metals, prints — and three combinations to steal.</span></div>
+          </div>
+          <p class="rb-terms">One-time $9 · 30-day money-back guarantee · no subscription</p>
+          <button class="btn btn-cream" onclick="startQuiz()">Find my season — free</button>
+          <p class="rb-note">Your season and power colors come free. The report is there if you want the rest.</p>
+        </div>
+        <figure class="rb-card-wrap">
+          <div class="card rb-card">
+            <div class="band" id="rbBand"></div>
+            <div class="inner">
+              <div class="lbl">From the Deep Autumn report</div>
+              <h3 class="serif" style="font-size:30px">Deep Autumn</h3>
+              <div class="named" id="rbNamed" style="margin-top:14px"></div>
+              <div id="rbAvoid"></div>
+            </div>
+          </div>
+          <figcaption>An excerpt, exactly as delivered. Every one of the twelve reports is written to this depth.</figcaption>
+        </figure>
       </div>
     </div>
   </div>
@@ -467,9 +603,9 @@ window.track=function(ev,props){try{if(/^phc_/.test(window.HUE_PH_KEY)&&window.p
           <div class="a">No account, no sign-up, no emails from us. Your result and your unlock live on your device — and if you ever lose access, <a href="mailto:sampetersen909@gmail.com?subject=Restore%20my%20HUE%20unlock">your receipt restores it</a>. You never buy twice.</div>
         </details>
       </div>
-      <div style="text-align:center;margin-top:30px">
-        <button class="btn btn-ink" onclick="startQuiz()">Find my season →</button>
-        <p class="meta" style="justify-content:center;margin-top:12px">Free · about 2 minutes · no sign-up</p>
+      <div style="text-align:center;margin-top:34px">
+        <button class="btn btn-ink" onclick="startQuiz()">Find my season</button>
+        <p class="meta" style="justify-content:center;margin-top:14px">Free · about 2 minutes · no sign-up</p>
       </div>
     </div>
   </div>
@@ -504,7 +640,7 @@ window.track=function(ev,props){try{if(/^phc_/.test(window.HUE_PH_KEY)&&window.p
         <div class="tip"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M5.8 5.8l12.4 12.4"/></svg></div><div><b>No filter</b><span>Filters shift color — they'll skew your result.</span></div></div>
       </div>
       <div class="drop">
-        <button class="btn btn-ink btn-block" type="button" onclick="document.getElementById('file').click()">Take a selfie →</button>
+        <button class="btn btn-ink btn-block" type="button" onclick="document.getElementById('file').click()">Take a selfie</button>
         <button class="backlink" type="button" style="display:block;margin:12px auto 0" onclick="document.getElementById('fileUp').click()">or upload a recent daylight photo</button>
       </div>
       <input id="file" type="file" accept="image/*" capture="user" hidden />
@@ -550,7 +686,7 @@ window.track=function(ev,props){try{if(/^phc_/.test(window.HUE_PH_KEY)&&window.p
             <div class="key"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg></div>
             <b id="lockTitle">Your full report is ready</b>
             <span>30+ named shades, the six colors to retire, and your makeup, hair &amp; wardrobe formulas.</span>
-            <em class="lock-cta">Unlock — $9 →</em>
+            <em class="lock-cta">Unlock — $9</em>
           </div>
         </div>
         <div class="named" id="fullNamed" style="display:none"></div>
@@ -574,7 +710,7 @@ window.track=function(ev,props){try{if(/^phc_/.test(window.HUE_PH_KEY)&&window.p
       <div id="shareBlock" style="display:none;text-align:center;margin-top:18px">
         <h3 class="serif" style="font-size:22px;margin-bottom:6px">Know someone who wears the wrong colors?</h3>
         <p class="price" style="margin:0 0 12px">Send them the free quiz — it takes two minutes.</p>
-        <button class="btn btn-ink btn-block" onclick="shareResult()">Share my season →</button>
+        <button class="btn btn-ink btn-block" onclick="shareResult()">Share my season</button>
       </div>
       <button class="restart" id="shareLink" style="margin:14px auto 0" onclick="shareResult()">Share my season</button>
     </div>
@@ -587,16 +723,25 @@ window.track=function(ev,props){try{if(/^phc_/.test(window.HUE_PH_KEY)&&window.p
     <div class="foot-grid">
       <div>
         <div class="mark"><span class="fan-mark"><i style="background:#e0866f"></i><i style="background:#c9a86a"></i><i style="background:#7f9a8f"></i><i style="background:#7a6f9c"></i></span> HUE</div>
-        <p class="foot-tag">Personal color analysis — free to try, $9 for the full report. Your photo never leaves your device.</p>
+        <p class="foot-tag">Personal color analysis in the 12-season tradition — free to try, $9 for the full report. Your photo never leaves your device.</p>
       </div>
-      <nav class="foot-nav" aria-label="Site">
-        <a href="privacy.html">Privacy</a>
-        <a href="terms.html">Terms</a>
-        <a href="refunds.html">Refunds</a>
-        <a href="mailto:sampetersen909@gmail.com">Contact</a>
-      </nav>
+      <div class="foot-cols">
+        <nav class="foot-col" aria-label="Explore">
+          <b>Explore</b>
+          <a href="#method">The method</a>
+          <a href="#report-band">The report</a>
+          <a href="#faq">Questions</a>
+        </nav>
+        <nav class="foot-col" aria-label="Support">
+          <b>Support</b>
+          <a href="privacy.html">Privacy</a>
+          <a href="terms.html">Terms</a>
+          <a href="refunds.html">Refunds</a>
+          <a href="mailto:sampetersen909@gmail.com">Contact</a>
+        </nav>
+      </div>
     </div>
-    <p class="foot-fine">© 2026 HUE · huebloom.app</p>
+    <p class="foot-fine">© 2026 HUE · huebloom.app · Checkout handled by Stripe</p>
   </div>
 </footer>
 
@@ -683,7 +828,15 @@ const QUIZ = [
 ];
 
 const $=id=>document.getElementById(id);
-function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));$(id).classList.add('on');window.scrollTo(0,0);}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));$(id).classList.add('on');document.body.classList.toggle('flow',id!=='intro');window.scrollTo(0,0);}
+/* section anchors keep working from app screens — return to the landing first */
+document.addEventListener('click',e=>{
+  const a=e.target.closest('a[href^="#"]');if(!a)return;
+  if(document.body.classList.contains('flow')){
+    e.preventDefault();show('intro');
+    requestAnimationFrame(()=>{const t=document.querySelector(a.getAttribute('href'));if(t)t.scrollIntoView({behavior:'smooth'});});
+  }
+});
 function rgb2hsl(r,g,b){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b);let h,s,l=(mx+mn)/2;if(mx===mn){h=s=0;}else{const d=mx-mn;s=l>.5?d/(2-mx-mn):d/(mx+mn);switch(mx){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;default:h=(r-g)/d+4;}h/=6;}return[h*360,s,l];}
 
 /* before/after drape sliders — hero + gallery */
@@ -733,6 +886,10 @@ const PROOF=[];
       <span class="p-name">${p.name}</span>
     </figure>`).join('');
 })();
+
+/* the twelve-season taxonomy grid — rendered from the same data the analysis uses */
+$('seasonsGrid').innerHTML=Object.keys(SEASONS).map(n=>
+  `<div class="sg-cell" role="listitem"><span class="sg-dots">${SEASONS[n].band.map(c=>`<i style="background:${c}"></i>`).join('')}</span><b>${n}</b></div>`).join('');
 
 /* ---- quiz state + flow ---- */
 const st={i:0, warm:0, light:0, chroma:0, answers:[]};
@@ -823,6 +980,17 @@ const store={
   save(){try{localStorage.setItem('hue',JSON.stringify({season:currentSeason,unlocked:isUnlocked,via:channel}))}catch(e){}},
   load(){try{return JSON.parse(localStorage.getItem('hue')||'null')}catch(e){return null}}
 };
+
+/* landing report excerpt — pulled from the real Deep Autumn report, not a mockup */
+(function(){
+  const det=SEASON_DETAILS&&SEASON_DETAILS['Deep Autumn'];
+  if(!det||!$('rbNamed'))return;
+  $('rbBand').innerHTML=SEASONS['Deep Autumn'].band.map(c=>`<i style="background:${c}"></i>`).join('');
+  $('rbNamed').innerHTML=det.palette.slice(0,8).map(s=>
+    `<div class="nsw"><div class="c" style="background:${s.hex}"></div><b>${s.name}</b><small>${s.hex.toUpperCase()}</small></div>`).join('');
+  const a=det.avoid[0];
+  $('rbAvoid').innerHTML=`<div class="avoid-row"><div class="c" style="background:${a.hex}"></div><div><b>Retire: ${a.name}</b><span>${a.why}</span></div></div>`;
+})();
 
 function onFilePicked(e){const f=e.target.files[0];if(!f)return;const url=URL.createObjectURL(f);const img=new Image();
   img.onload=()=>{$('previewImg').style.display='';document.querySelector('.ring').classList.remove('noimg');$('previewImg').src=url;show('analyzing');run(img);};
@@ -960,9 +1128,9 @@ function rr(x,px,py,w,h,r){x.beginPath();x.moveTo(px+r,py);x.arcTo(px+w,py,px+w,
 async function makeShareCard(){
   const d=SEASONS[currentSeason];
   try{await Promise.all([
-    document.fonts.load('400 130px "Playfair Display"'),
-    document.fonts.load('italic 500 130px "Playfair Display"'),
-    document.fonts.load('italic 400 44px "Playfair Display"'),
+    document.fonts.load('400 130px "Bodoni Moda"'),
+    document.fonts.load('italic 500 130px "Bodoni Moda"'),
+    document.fonts.load('italic 400 44px "Bodoni Moda"'),
     document.fonts.load('600 30px "General Sans"'),
     document.fonts.load('500 34px "General Sans"')]);}catch(e){}
   const W=1080,H=1920,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
@@ -974,8 +1142,8 @@ async function makeShareCard(){
   // season name — one word per line for drama
   x.fillStyle='#2b2129';
   const words=currentSeason.split(' ');
-  x.font='400 130px "Playfair Display", serif';x.fillText(words[0], W/2, 360);
-  x.font='italic 500 130px "Playfair Display", serif';x.fillText(words[1], W/2, 505);
+  x.font='400 130px "Bodoni Moda", serif';x.fillText(words[0], W/2, 360);
+  x.font='italic 500 130px "Bodoni Moda", serif';x.fillText(words[1], W/2, 505);
   // description, wrapped
   x.font='500 34px "General Sans", sans-serif';x.fillStyle='#8b7f84';
   const dw=[];let line='';d.desc.split(' ').forEach(w=>{if(x.measureText(line+' '+w).width>760&&line){dw.push(line);line=w;}else line=line?line+' '+w:w;});dw.push(line);
@@ -999,12 +1167,12 @@ async function makeShareCard(){
     x.fillStyle=g;x.fill();x.restore();
   }
   // footer — three elements with breathing room; domain large enough to survive story compression
-  x.fillStyle='#2b2129';x.font='italic 400 44px "Playfair Display", serif';
+  x.fillStyle='#2b2129';x.font='italic 400 44px "Bodoni Moda", serif';
   x.fillText('Find yours — free, in two minutes', W/2, 1700);
   x.font='600 52px "General Sans", sans-serif';x.fillStyle='#2b2129';
   x.fillText(SITE_URL.replace('https://','').replace(/\/$/,''), W/2, 1775);
   const mk=['#e0866f','#c9a86a','#7f9a8f','#7a6f9c'];mk.forEach((col,i)=>{rr(x,W/2-46+i*20,1845,12,44,6);x.fillStyle=col;x.fill();});
-  x.fillStyle='#2b2129';x.font='500 40px "Playfair Display", serif';x.textAlign='left';x.fillText('HUE', W/2+48, 1883);
+  x.fillStyle='#2b2129';x.font='500 40px "Bodoni Moda", serif';x.textAlign='left';x.fillText('HUE', W/2+48, 1883);
   return c;
 }
 async function shareResult(){
