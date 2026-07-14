@@ -33,7 +33,7 @@
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
 {"@type":"Question","name":"How does HUE find my season?","acceptedAnswer":{"@type":"Answer","text":"One selfie, analyzed instantly on your device, is the primary read — it locates your face and measures your undertone, your depth, and the contrast of your natural coloring, the way an analyst reads a draping. Five quick questions — metals, veins, sun response, contrast, whites — sharpen the placement. Together they land you in one of the twelve seasons."}},
-{"@type":"Question","name":"Is my photo uploaded anywhere?","acceptedAnswer":{"@type":"Answer","text":"Never. Your selfie is analyzed in your browser, on your device — it never touches a server. No accounts, no tracking, no analytics."}},
+{"@type":"Question","name":"Is my photo uploaded anywhere?","acceptedAnswer":{"@type":"Answer","text":"Never. Your selfie is analyzed in your browser, on your device — it never touches a server. No accounts, no cookies, no ad trackers — only anonymous, cookieless usage counts, which never include your photo or your palette."}},
 {"@type":"Question","name":"What's in the $9 full report?","acceptedAnswer":{"@type":"Answer","text":"Your complete palette of 30+ named shades, the six colors quietly working against you (and why), your makeup formula, hair direction to take to your colorist, and a wardrobe system: neutrals, metals, prints, and three combinations to steal. One-time purchase, no subscription."}},
 {"@type":"Question","name":"How is this different from a $300 draping?","acceptedAnswer":{"@type":"Answer","text":"An in-person analyst drapes dozens of fabrics against your face over a couple of hours — it's the gold standard, and it costs $200–400. HUE uses the same 12-season system, self-served: your answers plus a daylight selfie, in about two minutes."}},
 {"@type":"Question","name":"What if I'm not happy with it?","acceptedAnswer":{"@type":"Answer","text":"Every purchase has a 30-day money-back guarantee. Email us, get your $9 back, no questions asked."}},
@@ -407,12 +407,16 @@
   }
 </style>
 <script>
-/* Analytics slot — INERT. No analytics script loads and no request fires until the separate
-   owner activation commit (PostHog cookieless; see repo activation notes). track() is a
-   permanent safe no-op until then. */
-window.HUE_PH_KEY='';
+/* Analytics — LIVE (owner-activated 2026-07-14). PostHog in cookieless mode:
+   persistence 'memory' (no cookies, no stored identifier), autocapture off,
+   session recording off. Only the explicit track() events + pageviews fire;
+   they never include the photo, the answers, or the palette. */
+window.HUE_PH_KEY='phc_vzVZ8UBpGgcR4Hngm7GNtw64XgWkfvPrXm6aBYEfhXRN';
 window.HUE_PH_HOST='https://us.i.posthog.com';
 window.track=function(ev,props){try{if(/^phc_/.test(window.HUE_PH_KEY)&&window.posthog)window.posthog.capture(ev,props)}catch(e){}};
+!function(t,e){var o,n,p,r;e.__SV||(window.posthog&&window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+posthog.init(window.HUE_PH_KEY,{api_host:window.HUE_PH_HOST,defaults:'2026-05-30',persistence:'memory',autocapture:false,disable_session_recording:true});
+(function(){var m=(new URLSearchParams(location.search).get('via')||'').match(/^[a-z0-9_-]{1,24}$/);if(m)posthog.register({via:m[0]});})();
 </script>
 </head>
 <body>
@@ -594,7 +598,7 @@ window.track=function(ev,props){try{if(/^phc_/.test(window.HUE_PH_KEY)&&window.p
         </details>
         <details>
           <summary>Is my photo uploaded anywhere?</summary>
-          <div class="a">Never. Your selfie is analyzed in your browser, on your device — it never touches a server. No accounts, no tracking, no analytics. See the <a href="privacy.html">privacy policy</a>; it's short, because we barely collect anything.</div>
+          <div class="a">Never. Your selfie is analyzed in your browser, on your device — it never touches a server. No accounts, no cookies, no ad trackers — only anonymous, cookieless counts of which steps get used, and those never include your photo or your palette. See the <a href="privacy.html">privacy policy</a>; it's short, because we barely collect anything.</div>
         </details>
         <details>
           <summary>What's in the $9 full report?</summary>
