@@ -20,7 +20,7 @@
 <meta name="twitter:title" content="HUE — Your Colors, Found in a Selfie" />
 <meta name="twitter:description" content="A guided color analysis. A few questions, one selfie, your exact 12-season palette — the colors that make you glow." />
 <meta name="theme-color" content="#f7f2ef" />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232b2129'/%3E%3Crect x='6.5' y='7.5' width='3.4' height='17' rx='1.7' fill='%23e0866f'/%3E%3Crect x='11.4' y='7.5' width='3.4' height='17' rx='1.7' fill='%23c9a86a'/%3E%3Crect x='16.3' y='7.5' width='3.4' height='17' rx='1.7' fill='%237f9a8f'/%3E%3Crect x='21.2' y='7.5' width='3.4' height='17' rx='1.7' fill='%237a6f9c'/%3E%3C/svg%3E" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='.5' y='.5' width='31' height='31' rx='2' fill='%23f7f2ef' stroke='%232b2129' stroke-opacity='.22'/%3E%3Crect x='6.5' y='7.5' width='3.4' height='17' rx='1.7' fill='%23e0866f'/%3E%3Crect x='11.4' y='7.5' width='3.4' height='17' rx='1.7' fill='%23c9a86a'/%3E%3Crect x='16.3' y='7.5' width='3.4' height='17' rx='1.7' fill='%237f9a8f'/%3E%3Crect x='21.2' y='7.5' width='3.4' height='17' rx='1.7' fill='%237a6f9c'/%3E%3C/svg%3E" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/bodoni-moda-var.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/bodoni-moda-var-italic.woff2" crossorigin>
@@ -51,7 +51,7 @@
     --accent:#b0616e; --accent-soft:#f0dee1; --rose:#e7d3ce;
     --tint:#f7f2ef; /* shifts to the season on reveal */
     --shadow:0 30px 70px -34px rgba(43,33,41,.30); --shadow-sm:0 14px 34px -20px rgba(43,33,41,.28);
-    --r:22px;
+    --r:2px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth}
@@ -103,17 +103,17 @@
 
   /* hero mirror — arched before/after drape slider */
   .mirror-wrap{max-width:420px;margin-left:auto}
-  .mirror{position:relative;aspect-ratio:3/4;border-radius:210px 210px 26px 26px;overflow:hidden;
+  .mirror{position:relative;aspect-ratio:3/4;border-radius:210px 210px 2px 2px;overflow:hidden;
     box-shadow:var(--shadow);touch-action:none;cursor:ew-resize;user-select:none;-webkit-user-select:none;
     --cut:50%;background:var(--rose);outline-offset:4px}
   .mirror:focus-visible{outline:2px solid var(--accent)}
   .mirror img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
   .mirror .before-pane{position:absolute;inset:0;clip-path:inset(0 calc(100% - var(--cut)) 0 0)}
   .m-label{position:absolute;bottom:18px;font-size:10.5px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;
-    padding:6px 12px;border-radius:999px;background:rgba(247,242,239,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);pointer-events:none}
+    padding:6px 12px;border-radius:2px;background:rgba(247,242,239,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);pointer-events:none}
   .m-label-l{left:16px;color:var(--soft)}
   .m-chip{position:absolute;right:14px;bottom:14px;display:flex;align-items:center;gap:7px;background:rgba(255,251,249,.9);
-    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-radius:999px;padding:8px 14px 8px 10px;box-shadow:var(--shadow-sm);pointer-events:none}
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-radius:2px;padding:8px 14px 8px 10px;box-shadow:var(--shadow-sm);pointer-events:none}
   .m-chip i{width:13px;height:13px;border-radius:50%;margin-right:-4px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.05)}
   .m-chip b{font-family:"Bodoni Moda";font-weight:500;font-size:13.5px;margin-left:6px}
   .m-divider{position:absolute;top:0;bottom:0;left:var(--cut);width:0;pointer-events:none}
@@ -121,7 +121,7 @@
     background:linear-gradient(to bottom,transparent,rgba(255,251,249,.95) 12%,rgba(255,251,249,.95) 88%,transparent)}
   .m-handle{position:absolute;top:71%;left:0;transform:translate(-50%,-50%);
     font-family:"Bodoni Moda";font-style:italic;font-size:14px;color:var(--ink);
-    background:rgba(255,251,249,.95);border:1px solid var(--line);border-radius:999px;padding:7px 15px;box-shadow:var(--shadow-sm);white-space:nowrap}
+    background:rgba(255,251,249,.95);border:1px solid var(--line);border-radius:2px;padding:7px 15px;box-shadow:var(--shadow-sm);white-space:nowrap}
   .m-caption{text-align:center;color:var(--soft);font-size:14px;margin-top:16px}
   .m-caption em{font-family:"Bodoni Moda";font-style:italic;color:var(--ink)}
 
@@ -130,7 +130,7 @@
   .gal-sub{color:var(--soft);font-size:15px;max-width:430px;margin:12px auto 0}
   .gal-row{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;max-width:960px;margin:34px auto 0}
   .gal-card{margin:0}
-  .gal-card .mirror{border-radius:150px 150px 20px 20px}
+  .gal-card .mirror{border-radius:150px 150px 2px 2px}
   .gal-card .m-handle{font-size:12px;padding:5px 12px;top:76%}
   .gal-card .m-chip{right:10px;bottom:10px;padding:6px 11px 6px 8px}
   .gal-card .m-chip i{width:10px;height:10px}
@@ -144,7 +144,7 @@
   .proof-head{text-align:center;margin-bottom:26px}
   .proof-head h2{font-size:clamp(28px,4vw,40px);font-weight:400;margin-top:10px}
   .proof-row{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;max-width:920px;margin:0 auto}
-  .p-card{background:var(--card);border:1px solid var(--line);border-radius:130px 130px 20px 20px;box-shadow:var(--shadow-sm);
+  .p-card{background:var(--card);border:1px solid var(--line);border-radius:130px 130px 2px 2px;box-shadow:var(--shadow-sm);
     overflow:hidden;text-align:center;padding-bottom:20px;transition:transform .25s}
   .p-card:nth-child(odd){transform:rotate(-1.2deg)}
   .p-card:nth-child(even){transform:rotate(1.1deg) translateY(8px)}
@@ -167,11 +167,11 @@
   .q-title{font-size:clamp(30px,4.6vw,44px);font-weight:400;line-height:1.08;margin-bottom:10px}
   .q-sub{color:var(--soft);font-size:16px;margin-bottom:30px}
   .opts{display:grid;gap:12px;text-align:left}
-  .opt{display:flex;align-items:center;gap:16px;text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:18px;
+  .opt{display:flex;align-items:center;gap:16px;text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:2px;
     padding:18px 20px;cursor:pointer;transition:.18s;box-shadow:var(--shadow-sm);color:var(--ink);font-family:inherit;width:100%}
   .opt:hover{border-color:var(--accent);transform:translateY(-2px)}
   .opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  .opt .swz{width:34px;height:34px;border-radius:10px;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+  .opt .swz{width:34px;height:34px;border-radius:2px;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
   .opt .swz-u{display:grid;place-items:center;background:#f1e8e2;color:var(--soft);
     font-family:"Bodoni Moda",Georgia,serif;font-style:italic;font-size:19px;line-height:1}
   .opt-u .ot{font-weight:500}
@@ -187,14 +187,14 @@
   .cap-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:34px 30px;max-width:520px;margin:0 auto;text-align:center}
   .tips{display:grid;gap:12px;text-align:left;margin:22px 0 26px}
   .tip{display:flex;gap:13px;align-items:center;font-size:15px}
-  .tip .ic{width:38px;height:38px;border-radius:11px;background:var(--accent-soft);color:var(--ink);display:grid;place-items:center;flex:0 0 auto}
+  .tip .ic{width:38px;height:38px;border-radius:2px;background:var(--accent-soft);color:var(--ink);display:grid;place-items:center;flex:0 0 auto}
   .ic svg,.fineprint svg,.lockover .key svg,.modal .em svg{fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
   .ic svg{width:20px;height:20px}
   .fineprint svg{width:14px;height:14px;flex:0 0 auto;color:var(--accent)}
   .lockover .key svg{width:30px;height:30px;color:var(--accent)}
   .modal .em svg{width:42px;height:42px;color:var(--accent)}
   .tip b{font-weight:600}.tip span{color:var(--soft);font-size:13px;display:block}
-  .drop{border:1.5px dashed #d8c9bd;border-radius:16px;padding:22px;cursor:pointer;transition:.18s;background:#fdf8f2}
+  .drop{border:1.5px dashed #d8c9bd;border-radius:2px;padding:22px;cursor:pointer;transition:.18s;background:#fdf8f2}
   .drop:hover{border-color:var(--accent);background:#fbf4ea}
   .fineprint{font-size:12.5px;color:var(--soft);margin-top:16px;display:flex;gap:6px;justify-content:center;align-items:center}
 
@@ -221,14 +221,14 @@
   .reveal-head h2 em{font-style:italic;color:var(--accent)}
   .reveal-head p{color:var(--soft);font-size:17px;max-width:470px;margin:16px auto 0}
   .chips{display:flex;gap:8px;justify-content:center;margin:22px 0 6px;flex-wrap:wrap}
-  .chip{border:1.5px solid rgba(43,33,41,.24);border-radius:999px;padding:7px 16px;font-size:12.5px;font-weight:600;letter-spacing:.02em}
+  .chip{border:1.5px solid rgba(43,33,41,.24);border-radius:2px;padding:7px 16px;font-size:12.5px;font-weight:600;letter-spacing:.02em}
   .card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;max-width:560px;margin:28px auto 0;border:1px solid var(--line)}
   .card .band{height:16px;display:flex}.card .band i{flex:1}
   .card .inner{padding:28px 30px 32px}
   .card .lbl{font-size:11.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--soft);font-weight:600}
   .card .inner h3{font-size:38px;font-weight:400;margin:6px 0 16px}
   .palette{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
-  .palette .sw{aspect-ratio:.8;border-radius:12px;box-shadow:var(--shadow-sm);display:flex;align-items:flex-end;justify-content:center;padding-bottom:7px}
+  .palette .sw{aspect-ratio:.8;border-radius:2px;box-shadow:var(--shadow-sm);display:flex;align-items:flex-end;justify-content:center;padding-bottom:7px}
   .palette .sw small{font-size:8.5px;font-weight:600;color:#fff;letter-spacing:.02em;text-shadow:0 1px 3px rgba(0,0,0,.35)}
   .section-label{font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--soft);font-weight:600;margin:24px 0 12px}
   .lockwrap{position:relative;margin-top:6px}
@@ -238,7 +238,7 @@
   .locked .sw.ph:nth-child(3n+1){background:linear-gradient(135deg,#ece2da,#f7f0ea)}
   .locked .sw.ph:nth-child(3n+2){background:linear-gradient(135deg,#f2eae2,#e9dfd6)}
   .lockover{position:absolute;inset:-6px;display:grid;place-content:center;text-align:center;gap:10px;
-    background:radial-gradient(120% 120% at 50% 42%,var(--card) 40%,transparent);border-radius:16px;padding:18px}
+    background:radial-gradient(120% 120% at 50% 42%,var(--card) 40%,transparent);border-radius:2px;padding:18px}
   .lockover .key{font-size:26px}.lockover b{font-size:19px;font-family:"Bodoni Moda";font-weight:500}
   .lockover span{font-size:13.5px;color:var(--soft);max-width:300px;margin:0 auto}
   .unlock{max-width:560px;margin:22px auto 0}
@@ -255,7 +255,7 @@
   /* FULL REPORT (unlocked) */
   .named{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:14px 12px;margin-top:4px}
   .nsw{text-align:center}
-  .nsw .c{aspect-ratio:1;border-radius:12px;box-shadow:var(--shadow-sm)}
+  .nsw .c{aspect-ratio:1;border-radius:2px;box-shadow:var(--shadow-sm)}
   .nsw b{font-size:11px;font-weight:600;display:block;margin-top:7px;line-height:1.2}
   .nsw small{font-size:9px;color:var(--soft);letter-spacing:.05em;font-weight:500}
   .report-card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);border:1px solid var(--line);max-width:560px;margin:22px auto 0;padding:28px 30px 30px}
@@ -265,11 +265,11 @@
   .report-card p b{font-weight:600}
   .avoid-row{display:flex;gap:14px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
   .avoid-row:last-child{border-bottom:0}
-  .avoid-row .c{width:42px;height:42px;border-radius:12px;flex:0 0 auto;box-shadow:var(--shadow-sm)}
+  .avoid-row .c{width:42px;height:42px;border-radius:2px;flex:0 0 auto;box-shadow:var(--shadow-sm)}
   .avoid-row b{font-size:14.5px;font-weight:600;display:block}
   .avoid-row span{font-size:12.5px;color:var(--soft);display:block;line-height:1.35}
   .chiprow{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 16px}
-  .mchip{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:6px 13px 6px 7px;font-size:12.5px;font-weight:600;background:#fff}
+  .mchip{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:2px;padding:6px 13px 6px 7px;font-size:12.5px;font-weight:600;background:#fff}
   .mchip i{width:22px;height:22px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
   .combo{display:flex;gap:14px;align-items:baseline;padding:9px 0}
   .combo .n{font-family:"Bodoni Moda";font-style:italic;color:var(--accent);font-size:17px;flex:0 0 18px}
@@ -277,7 +277,7 @@
   .unlocked-note{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--accent);font-weight:600;font-size:13.5px;letter-spacing:.04em;margin-bottom:4px}
   .unlocked-note svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff9f4;
-    padding:13px 22px;border-radius:999px;font-size:14px;font-weight:500;box-shadow:var(--shadow);opacity:0;pointer-events:none;
+    padding:13px 22px;border-radius:2px;font-size:14px;font-weight:500;box-shadow:var(--shadow);opacity:0;pointer-events:none;
     transition:opacity .3s,transform .3s;z-index:80;max-width:88vw;text-align:center}
   .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
@@ -342,7 +342,7 @@
   .mrow svg{width:18px;height:18px;flex:0 0 auto;margin-top:2px;fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .avoid-teaser{display:flex;align-items:center;gap:10px;margin-top:12px}
   /* placeholder chips — the real retire colors never render until unlock */
-  .avoid-teaser .c{width:34px;height:34px;border-radius:10px;flex:0 0 auto;
+  .avoid-teaser .c{width:34px;height:34px;border-radius:2px;flex:0 0 auto;
     background:linear-gradient(135deg,#efe7e0,#e9dfd6)}
   .avoid-teaser .c:nth-child(2n){background:linear-gradient(135deg,#ece2da,#f6efe8)}
   .avoid-teaser span{font-size:12.5px;color:var(--soft)}
@@ -779,7 +779,7 @@ posthog.init(window.HUE_PH_KEY,{api_host:window.HUE_PH_HOST,defaults:'2026-05-30
 <!-- SHARE FALLBACK (in-app browsers that block native share/downloads) -->
 <div class="modal-back" id="shareFallback" onclick="if(event.target===this)this.style.display='none'">
   <div class="modal">
-    <img id="shareFallbackImg" alt="Your season card" style="width:100%;border-radius:14px;box-shadow:var(--shadow-sm)" />
+    <img id="shareFallbackImg" alt="Your season card" style="width:100%;border-radius:2px;box-shadow:var(--shadow-sm)" />
     <p style="font-size:13.5px;color:var(--soft);margin:12px 0">Press and hold the card to save it, then post it anywhere.</p>
     <button class="btn btn-ink btn-block" onclick="navigator.clipboard&&navigator.clipboard.writeText(window._shareText||'').catch(()=>{});toast('Caption + link copied.')">Copy caption + link</button>
     <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="document.getElementById('shareFallback').style.display='none'">Done</button>

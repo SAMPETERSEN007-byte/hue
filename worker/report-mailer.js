@@ -81,7 +81,7 @@ function chipRow(items) {
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>'
     + row.map(c =>
       `<td width="16.6%" style="padding:6px 4px;vertical-align:top;text-align:center">
-        <div style="background:${esc(c.hex)};height:44px;border-radius:9px;border:1px solid rgba(0,0,0,.06)"></div>
+        <div style="background:${esc(c.hex)};height:44px;border-radius:2px;border:1px solid rgba(0,0,0,.06)"></div>
         <div style="font:600 10px/1.3 Arial,sans-serif;color:${INK};margin-top:5px">${esc(c.name)}</div>
         ${c.sub ? `<div style="font:500 8.5px/1.2 Arial,sans-serif;color:${SOFT};letter-spacing:.04em">${esc(c.sub)}</div>` : ''}
       </td>`).join('')
@@ -99,12 +99,12 @@ function renderEmail(season) {
   const palette = D.palette.map(p => ({ hex: p.hex, name: p.name, sub: p.hex.toUpperCase() }));
   const avoid = D.avoid.map(a =>
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-bottom:1px solid ${LINE}"><tr>
-      <td width="46" style="padding:10px 12px 10px 0"><div style="background:${esc(a.hex)};width:42px;height:42px;border-radius:9px"></div></td>
+      <td width="46" style="padding:10px 12px 10px 0"><div style="background:${esc(a.hex)};width:42px;height:42px;border-radius:2px"></div></td>
       <td style="padding:10px 0;font:400 13px/1.5 Georgia,serif;color:${INK}"><b style="font-family:Arial,sans-serif;font-size:13.5px">${esc(a.name)}</b><br>
         <span style="color:${SOFT};font-size:12.5px">${esc(a.why)}</span></td>
     </tr></table>`).join('');
   const mkChips = arr => (arr || []).map(m =>
-    `<span style="display:inline-block;margin:0 8px 8px 0;border:1px solid ${LINE};border-radius:999px;padding:6px 12px 6px 8px;font:600 12px Arial,sans-serif;color:${INK};background:#fff">
+    `<span style="display:inline-block;margin:0 8px 8px 0;border:1px solid ${LINE};border-radius:2px;padding:6px 12px 6px 8px;font:600 12px Arial,sans-serif;color:${INK};background:#fff">
       <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${esc(m.hex)};vertical-align:-2px"></span> ${esc(m.name)}</span>`).join('');
   const combos = (D.wardrobe.combos || []).map((c, i) =>
     `<div style="font:400 14px/1.6 Georgia,serif;color:${INK};padding:6px 0">
@@ -117,7 +117,7 @@ function renderEmail(season) {
       <span style="display:inline-block;width:5px;height:18px;border-radius:3px;background:#e0866f"></span><span style="display:inline-block;width:5px;height:18px;border-radius:3px;background:#c9a86a;margin-left:3px"></span><span style="display:inline-block;width:5px;height:18px;border-radius:3px;background:#7f9a8f;margin-left:3px"></span><span style="display:inline-block;width:5px;height:18px;border-radius:3px;background:#7a6f9c;margin-left:3px"></span>
       <span style="font:600 20px Georgia,serif;color:${INK};margin-left:10px;vertical-align:2px">HUE</span>
     </td></tr>
-    <tr><td style="background:${CARD};border:1px solid ${LINE};border-radius:18px;padding:34px 30px">
+    <tr><td style="background:${CARD};border:1px solid ${LINE};border-radius:2px;padding:34px 30px">
       <div style="font:600 11px/1 Arial,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:${ACCENT}">Your season</div>
       <div style="font:400 42px/1.05 Georgia,serif;color:${INK};margin:10px 0 8px">${esc(season)}</div>
       <div style="font:400 15.5px/1.6 Georgia,serif;color:${SOFT}">${esc(S.desc)}</div>
@@ -145,7 +145,7 @@ function renderEmail(season) {
       <div style="font:600 12px Arial,sans-serif;color:${SOFT};margin:16px 0 4px">THREE COMBINATIONS TO STEAL</div>
       ${combos}
 
-      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px auto 6px"><tr><td style="background:${INK};border-radius:999px">
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px auto 6px"><tr><td style="background:${INK};border-radius:2px">
         <a href="https://huebloom.app/?unlocked=1" style="display:inline-block;padding:14px 26px;font:600 14px Arial,sans-serif;color:#fff9f4;text-decoration:none">Open your report on any device</a>
       </td></tr></table>
       <div style="font:400 12px/1.5 Arial,sans-serif;color:${SOFT};text-align:center">That link activates your unlock on any device — retake the two-minute analysis there and your full report appears.</div>
@@ -161,11 +161,11 @@ function renderEmail(season) {
 function renderFallback() {
   return `<!doctype html><html><body style="margin:0;padding:0;background:${CREAM}">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 12px">
-  <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="background:${CARD};border:1px solid ${LINE};border-radius:18px">
+  <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="background:${CARD};border:1px solid ${LINE};border-radius:2px">
   <tr><td style="padding:34px 30px;text-align:center">
     <div style="font:400 30px Georgia,serif;color:${INK}">Your HUE report is unlocked.</div>
     <div style="font:400 15px/1.6 Georgia,serif;color:${SOFT};margin:12px 0 24px">Open the link below on any device, take the two-minute analysis, and your full report appears — this unlock is yours forever.</div>
-    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto"><tr><td style="background:${INK};border-radius:999px">
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto"><tr><td style="background:${INK};border-radius:2px">
       <a href="https://huebloom.app/?unlocked=1" style="display:inline-block;padding:14px 26px;font:600 14px Arial,sans-serif;color:#fff9f4;text-decoration:none">Open my report</a>
     </td></tr></table>
     <div style="font:400 12px/1.6 Arial,sans-serif;color:${SOFT};margin-top:22px">Questions or a refund within 30 days: reply to this email.</div>
