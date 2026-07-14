@@ -846,6 +846,15 @@ document.addEventListener('click',e=>{
   }
 });
 function rgb2hsl(r,g,b){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b);let h,s,l=(mx+mn)/2;if(mx===mn){h=s=0;}else{const d=mx-mn;s=l>.5?d/(2-mx-mn):d/(mx+mn);switch(mx){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;default:h=(r-g)/d+4;}h/=6;}return[h*360,s,l];}
+/* sRGB (D65) -> CIELAB — the color space undertone analysis is actually done in */
+function rgb2lab(r,g,b){
+  const f=v=>{v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4);};
+  const R=f(r),G2=f(g),B2=f(b);
+  let X=(.4124*R+.3576*G2+.1805*B2)/.95047, Y=.2126*R+.7152*G2+.0722*B2, Z=(.0193*R+.1192*G2+.9505*B2)/1.08883;
+  const t=v=>v>.008856?Math.cbrt(v):7.787*v+16/116;
+  X=t(X);Y=t(Y);Z=t(Z);
+  return [116*Y-16, 500*(X-Y), 200*(Y-Z)];
+}
 
 /* before/after drape sliders — hero + gallery */
 function initMirror(m,opts){
@@ -964,7 +973,11 @@ function quizBack(){
    3. REFUSE gracefully: no face-sized region or unreadable light -> null,
       and the UI asks for one retake instead of guessing. */
 function analyzePhoto(img){
-  const cv=$('cv'),ctx=cv.getContext('2d'),S=260;ctx.drawImage(img,0,0,S,S);
+  const cv=$('cv'),ctx=cv.getContext('2d'),S=260;
+  /* center-square crop, biased toward the top — never stretch a portrait selfie */
+  const iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height;
+  const side=Math.min(iw,ih),sx=(iw-side)/2,sy=(ih-side)*.35;
+  ctx.drawImage(img,sx,sy,side,side,0,0,S,S);
   const d=ctx.getImageData(0,0,S,S).data;
   const G=26,C=S/G;
   const isSkin=(r,g,b)=>{
@@ -974,16 +987,21 @@ function analyzePhoto(img){
     return y>38&&y<246&&cb>=77&&cb<=127&&cr>=133&&cr<=177;
   };
   const grid=new Float32Array(G*G),vGrid=new Float32Array(G*G);
+  let sceneSum=0,sceneN=0,sceneBright=0;
   for(let gy=0;gy<G;gy++)for(let gx=0;gx<G;gx++){
     let n=0,t=0,sy=0,sy2=0;
     for(let y=gy*C;y<(gy+1)*C;y+=2)for(let x=gx*C;x<(gx+1)*C;x+=2){
       const i=((y|0)*S+(x|0))*4,r=d[i],g=d[i+1],b=d[i+2];t++;
       if(isSkin(r,g,b))n++;
       const ly=.299*r+.587*g+.114*b;sy+=ly;sy2+=ly*ly;
+      sceneSum+=ly;sceneN++;if(ly>250)sceneBright++;
     }
     grid[gy*G+gx]=n/t;
     vGrid[gy*G+gx]=sy2/t-(sy/t)*(sy/t);
   }
+  /* scene-level light gates: refuse what can't be read honestly */
+  if(sceneSum/sceneN<42)return {fail:'dark'};
+  if(sceneBright/sceneN>.30)return {fail:'blown'};
   /* a skin cell must also have texture — beige walls are skin-chromatic but FLAT,
      faces are not (features, shading). var>=6 keeps cheeks, rejects painted walls. */
   const okCell=c=>grid[c]>=.4&&vGrid[c]>=6;
@@ -1003,33 +1021,51 @@ function analyzePhoto(img){
     }
     if(!best||cells.length>best.length)best=cells;
   }
-  if(!best||best.length<Math.round(G*G*.055))return null;
-  /* gray-world sample of the scene's light: midtone pixels OUTSIDE the face component
-     (includes skin-chromatic flat walls, which is exactly what we want to measure) */
+  if(!best||best.length<Math.round(G*G*.055))return {fail:'noface'};
   const inComp=new Uint8Array(G*G);for(const c of best)inComp[c]=1;
-  let bgR=0,bgB=0,bgN=0;
-  for(let c=0;c<G*G;c++){
-    if(inComp[c])continue;
-    const gy=(c/G)|0,gx=c%G;
-    for(let y=gy*C;y<(gy+1)*C;y+=4)for(let x=gx*C;x<(gx+1)*C;x+=4){
-      const i=((y|0)*S+(x|0))*4,r=d[i],b=d[i+2];
-      const ly=.299*r+.587*d[i+1]+.114*b;
-      if(ly>50&&ly<235){bgR+=r;bgB+=b;bgN++;}
-    }
-  }
   let x0=G,x1=0,y0=G,y1=0;
   for(const c of best){const cy0=(c/G)|0,cx0=c%G;if(cx0<x0)x0=cx0;if(cx0>x1)x1=cx0;if(cy0<y0)y0=cy0;if(cy0>y1)y1=cy0;}
-  let R=0,Gc=0,B=0,n=0;
+  /* gray-world sample of the scene's light: midtone pixels outside the face, at head
+     level and above ONLY — below the chin is clothing, and a vivid drape or scarf
+     must never read as "tinted light" */
+  let bgR=0,bgG=0,bgB=0,bgN=0;
+  for(let c=0;c<G*G;c++){
+    if(inComp[c]||((c/G)|0)>y1)continue;
+    const gy=(c/G)|0,gx=c%G;
+    for(let y=gy*C;y<(gy+1)*C;y+=4)for(let x=gx*C;x<(gx+1)*C;x+=4){
+      const i=((y|0)*S+(x|0))*4,r=d[i],g=d[i+1],b=d[i+2];
+      const ly=.299*r+.587*g+.114*b;
+      if(ly>50&&ly<235){bgR+=r;bgG+=g;bgB+=b;bgN++;}
+    }
+  }
+  /* severe color cast: undertone can't be trusted under heavily tinted light */
+  if(bgN>500){
+    const rm=bgR/bgN,gm=bgG/bgN,bm=bgB/bgN;
+    if(Math.abs(rm-bm)>62||Math.abs(gm-(rm+bm)/2)>45)return {fail:'cast'};
+  }
+  /* median skin color — robust to specular highlights and stray shadows */
+  const rs=[],gs=[],bs=[];let blown=0;
   for(const c of best){
     const gy=(c/G)|0,gx=c%G;
     for(let y=gy*C;y<(gy+1)*C;y+=2)for(let x=gx*C;x<(gx+1)*C;x+=2){
       const i=((y|0)*S+(x|0))*4,r=d[i],g=d[i+1],b=d[i+2];
-      if(isSkin(r,g,b)){R+=r;Gc+=g;B+=b;n++;}
+      if(isSkin(r,g,b)){rs.push(r);gs.push(g);bs.push(b);if(r>=252||g>=252||b>=252)blown++;}
     }
   }
-  if(n<60)return null;
-  R/=n;Gc/=n;B/=n;
+  const n=rs.length;
+  if(n<60)return {fail:'noface'};
+  if(blown/n>.22)return {fail:'blown'};
+  const med=a=>{a.sort((p,q)=>p-q);return a[a.length>>1];};
+  let R=med(rs),Gc=med(gs),B=med(bs);
+  /* von Kries white balance against the scene: neutralize the light, clamped so a
+     colorful background can't overcorrect a genuine undertone */
+  if(bgN>500){
+    const rm=bgR/bgN,gm=bgG/bgN,bm=bgB/bgN,gray=(rm+gm+bm)/3;
+    const k=v=>Math.max(.78,Math.min(1.32,v));
+    R*=k(gray/rm);Gc*=k(gray/gm);B*=k(gray/bm);
+  }
   const [,satRaw,lSkin]=rgb2hsl(R,Gc,B);
+  if(lSkin<.13)return {fail:'dark'};
   /* hair band: from just above the face box down into its top third — melanin-colored
      hair (brown/blonde) is chromatically skin and merges into the blob, so sample
      inside the top too. Exclude forehead look-alikes (skin-classified AND near skin
@@ -1054,11 +1090,13 @@ function analyzePhoto(img){
      (calibrated to the bright>0.44 / soft<0.26 axis: blonde-on-fair ~.25 soft,
       brown-on-medium ~.38 true, black-on-fair ~.46 bright) */
   const chromaAxis=Math.max(0,Math.min(1,.6*satRaw+.45*contrast));
-  /* gray-world white balance: warm lamplight warms the whole scene, not just skin —
-     discount the background's own warmth so lighting doesn't read as undertone */
-  let warmSig=R-B;
-  if(bgN>500)warmSig-=.6*(bgR/bgN-bgB/bgN);
-  return {warmSig, l:lSkin, s:chromaAxis, satRaw, contrast, hairL:lHair, faceCells:best.length};
+  /* undertone in CIELAB, computed from the white-balanced skin color:
+     hue angle = atan2(b*,a*) — yellow-leaning skin reads warm, pink-leaning cool.
+     Near-neutral skin (tiny a*,b*) has no meaningful hue: report null, don't guess. */
+  const [,aStar,bStar]=rgb2lab(R,Gc,B);
+  const labC=Math.hypot(aStar,bStar);
+  const hue=labC>8?Math.atan2(bStar,aStar)*180/Math.PI:null;
+  return {warmSig:R-B, hue, labC, l:lSkin, s:chromaAxis, satRaw, contrast, hairL:lHair, faceCells:best.length};
 }
 function mapSeason(warm,depth,chroma){
   // depth (deep/light) is the most defining axis, so it is checked first.
@@ -1070,18 +1108,23 @@ function decideSeason(photo){
   // Blend the quiz (reliable for undertone) with the photo (depth + chroma).
   let warmScore=st.warm, depth=0.55, chroma=0.34;
   if(photo){
-    /* the selfie is the primary undertone read: the proven mild thresholds (18/-6,
-       asymmetric because skin R-B skews positive) stay at ±1.5; clearly extreme
-       reads earn ±3 and outvote a hesitant quiz */
+    /* the selfie is the primary undertone read. Two independent visual signals vote:
+       the white-balanced red-blue split (proven thresholds 18/-6, asymmetric because
+       skin R-B skews positive; extreme reads ±3) and the CIELAB hue angle of the
+       skin (yellow-leaning warm, pink-leaning cool). Together they can outvote a
+       hesitant quiz; a fully consistent quiz still stands. */
     const w=photo.warmSig;
-    warmScore += w>40?3 : w>18?1.5 : w<-20?-3 : w<-6?-1.5 : 0;
+    let vote = w>40?3 : w>18?1.5 : w<-20?-3 : w<-6?-1.5 : 0;
+    if(photo.hue!=null)vote += photo.hue>63?2 : photo.hue>58?1 : photo.hue<44?-2 : photo.hue<48?-1 : 0;
+    warmScore += Math.max(-4,Math.min(4,vote));
     depth=photo.l; chroma=photo.s;
   }
   depth  = Math.max(0,Math.min(1, depth  + st.light *0.05));
   chroma = Math.max(0,Math.min(1, chroma + st.chroma*0.05));
-  /* undertone tie: the selfie leans it (midpoint of its warm/cool dead zone);
-     without a selfie, cool-neutral is the safer read — never a silent warm default */
-  const warm = warmScore!==0 ? warmScore>0 : (photo ? photo.warmSig>6 : false);
+  /* undertone tie: the selfie leans it; without a selfie, cool-neutral is the
+     safer read — never a silent warm default */
+  const warm = warmScore!==0 ? warmScore>0
+             : (photo ? (photo.hue!=null?photo.hue>53:photo.warmSig>6) : false);
   return mapSeason(warm, depth, chroma);
 }
 
@@ -1135,18 +1178,26 @@ function makeInsight(photo,season){
   return null;
 }
 let photoTries=0;
+const REJECT_MSG={
+  noface:"We couldn't find your face — fill more of the frame and try again.",
+  dark:"Too dim to read your true coloring — face a window and try once more.",
+  blown:"That light is washing you out — step back from direct light and try again.",
+  cast:"That light is heavily tinted — it would skew your colors. Daylight near a window reads truest."
+};
 function run(img){
   let photo=null;try{photo=analyzePhoto(img);}catch(err){photo=null;}
-  /* unreadable photo: ask for ONE retake instead of guessing — after that,
-     proceed on the answers and say so honestly */
-  if(!photo&&photoTries<1){
+  const reason=photo&&photo.fail;
+  if(reason)photo=null;
+  /* bad light is REJECTED, with the specific fix — two retakes before we
+     fall back to the answers and say so honestly */
+  if(!photo&&photoTries<2){
     photoTries++;
     show('capture');
-    toast("We couldn't read your face in that light — try facing a window, a little closer.");
-    track('selfie_unreadable');
+    toast(REJECT_MSG[reason]||REJECT_MSG.noface);
+    track('selfie_rejected',{reason:reason||'error',attempt:photoTries});
     return;
   }
-  const steps=["Detecting undertone","Measuring depth & contrast","Matching your seasonal palette","Composing your colors"];
+  const steps=["Checking your light","Detecting undertone","Measuring depth & contrast","Matching your seasonal palette"];
   let i=0;$('stepText').textContent=steps[0];
   const iv=setInterval(()=>{i++;if(i<steps.length)$('stepText').textContent=steps[i];},620);
   track('selfie_analyzed',{readable:!!photo});
