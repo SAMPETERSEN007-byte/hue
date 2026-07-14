@@ -214,11 +214,10 @@
   .fan-center i{width:7px;height:26px;border-radius:3.5px}
   /* the logo's bars bent into a wheel — heights roll in a wave while the
      wheel slowly turns; bars live at radius 106-129, outside the arc (96) */
-  .wheel{position:absolute;inset:0;animation:wheelspin 16s linear infinite}
-  .wheel i{position:absolute;left:calc(50% - 2.5px);top:calc(50% - 18px);width:5px;height:18px;border-radius:2.5px;
+  .wheel{position:absolute;inset:0}
+  .wheel i{position:absolute;left:calc(50% - 3.5px);top:calc(50% - 18px);width:7px;height:18px;border-radius:3.5px;
     transform-origin:50% 100%;transform:rotate(var(--a)) translateY(-106px);
     animation:barwave 1.9s ease-in-out infinite;animation-delay:var(--d)}
-  @keyframes wheelspin{to{transform:rotate(360deg)}}
   /* narrow traveling crest: bars rest at .88 and only ~1/5 of the circle
      is lifted at any moment (38-62% window), instead of a full half-sine */
   @keyframes barwave{
@@ -426,7 +425,7 @@
   @media(prefers-reduced-motion:reduce){
     *{animation-duration:.001s!important;transition-duration:.08s!important}
     .arc-fill{transition:none!important;stroke-dashoffset:0!important}
-    .wheel,.wheel i{animation:none!important}
+    .wheel i{animation:none!important}
   }
 </style>
 <script>
@@ -1293,7 +1292,7 @@ function quizSeq(shades){
    brand four, each bar phase-offset so one crest travels the circle */
 function buildWheel(){
   const w=$('waveWheel');if(!w||w.childElementCount)return;
-  const N=44,T=1.9,rgb=['#e0866f','#c9a86a','#7f9a8f','#7a6f9c']
+  const N=36,T=1.9,rgb=['#e0866f','#c9a86a','#7f9a8f','#7a6f9c']
     .map(h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)));
   for(let i=0;i<N;i++){
     const t=i/N*4,s=Math.floor(t),f=t-s,a=rgb[s%4],b=rgb[(s+1)%4];
