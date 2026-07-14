@@ -224,7 +224,11 @@
   .palette .sw small{font-size:8.5px;font-weight:600;color:#fff;letter-spacing:.02em;text-shadow:0 1px 3px rgba(0,0,0,.35)}
   .section-label{font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--soft);font-weight:600;margin:24px 0 12px}
   .lockwrap{position:relative;margin-top:6px}
-  .locked{filter:saturate(.22) blur(3px)}
+  /* locked palette: neutral placeholder tiles — the real shades never render
+     until unlock (blur leaks color; these leak nothing) */
+  .locked .sw.ph{background:linear-gradient(135deg,#efe7e0,#faf4ee)}
+  .locked .sw.ph:nth-child(3n+1){background:linear-gradient(135deg,#ece2da,#f7f0ea)}
+  .locked .sw.ph:nth-child(3n+2){background:linear-gradient(135deg,#f2eae2,#e9dfd6)}
   .lockover{position:absolute;inset:-6px;display:grid;place-content:center;text-align:center;gap:10px;
     background:radial-gradient(120% 120% at 50% 42%,var(--card) 40%,transparent);border-radius:16px;padding:18px}
   .lockover .key{font-size:26px}.lockover b{font-size:19px;font-family:"Bodoni Moda";font-weight:500}
@@ -1197,13 +1201,30 @@ function run(img){
     track('selfie_rejected',{reason:reason||'error',attempt:photoTries});
     return;
   }
-  const steps=["Checking your light","Detecting undertone","Measuring depth & contrast","Matching your seasonal palette"];
+  /* the reveal narrates the REAL measurements the engine just made —
+     honest theater: every number on screen came from this photo */
+  let steps;
+  if(photo){
+    const lean=photo.hue!=null
+      ? (photo.hue>55?'leaning warm':photo.hue<49?'leaning cool':'near neutral')
+      : (photo.warmSig>18?'leaning warm':photo.warmSig<-6?'leaning cool':'near neutral');
+    steps=[
+      "Checking your light — clear",
+      "Locating your face — "+photo.faceCells+" regions read",
+      "Balancing for your lighting",
+      "Undertone: "+lean,
+      "Depth index "+Math.round((1-photo.l)*100)+" · contrast "+Math.round(photo.contrast*100),
+      "Matching against the twelve seasons"
+    ];
+  }else{
+    steps=["Reading your five answers","Weighing undertone & depth","Matching your seasonal palette","Composing your colors"];
+  }
   let i=0;$('stepText').textContent=steps[0];
-  const iv=setInterval(()=>{i++;if(i<steps.length)$('stepText').textContent=steps[i];},620);
+  const iv=setInterval(()=>{i++;if(i<steps.length)$('stepText').textContent=steps[i];},650);
   track('selfie_analyzed',{readable:!!photo});
   const season=decideSeason(photo);
   lastInsight=photo?makeInsight(photo,season):"That light was hard to read, so this leans on your answers — retake in daylight anytime to sharpen it.";
-  setTimeout(()=>{clearInterval(iv);render(season);},2600);
+  setTimeout(()=>{clearInterval(iv);render(season);},photo?4300:2600);
 }
 function runQuizOnly(){
   $('previewImg').style.display='none';$('previewImg').removeAttribute('src');
@@ -1232,7 +1253,6 @@ function render(season){
   $('chips').innerHTML=[parts[0], parts[1], /Spring|Autumn/.test(season)?'Warm undertone':'Cool undertone']
     .map(t=>`<span class="chip">${t}</span>`).join('');
   $('teaser').innerHTML=d.teaser.map(c=>`<div class="sw" style="background:${c}"><small>${c.toUpperCase()}</small></div>`).join('');
-  $('full').innerHTML=d.full.map(c=>`<div class="sw" style="background:${c}"></div>`).join('');
   if(isUnlocked)applyUnlocked(); else applyLocked();
   store.save();
   show('result');
@@ -1242,6 +1262,9 @@ function chipRow(list){return `<div class="chiprow">`+list.map(s=>`<span class="
 function applyLocked(){
   $('lockwrap').style.display='';$('fullNamed').style.display='none';
   const det=SEASON_DETAILS&&SEASON_DETAILS[currentSeason];
+  /* placeholder tiles only — the report's shades stay unseen until it's yours */
+  const shadeCount=det&&det.palette?det.palette.length:30;
+  $('full').innerHTML=Array.from({length:Math.min(18,shadeCount)},()=>'<div class="sw ph"></div>').join('');
   $('report').innerHTML=`${det?`
   <div class="report-card">
     <h4 class="serif">Colors to retire — a preview</h4>
@@ -1256,7 +1279,7 @@ function applyLocked(){
   </div>`;
   $('payBlock').style.display='';$('unlockedBadge').style.display='none';
   $('shareBlock').style.display='none';$('shareLink').style.display='';
-  $('fullLabel').textContent='Your full palette · 30+ shades';
+  $('fullLabel').textContent='Your full palette · '+(det&&det.palette?det.palette.length+' shades':'30+ shades');
 }
 function applyUnlocked(){
   const det=SEASON_DETAILS&&SEASON_DETAILS[currentSeason];
