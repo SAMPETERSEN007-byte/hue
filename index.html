@@ -201,14 +201,27 @@
   /* ANALYZING — a hairline arc draws itself around the portrait in real time
      with the measurement sequence; steps cross-fade in italic serif */
   #analyzing .stage{min-height:78vh;display:grid;place-content:center}
-  .ring-wrap{position:relative;width:206px;height:206px;margin:0 auto 28px}
+  .ring-wrap{position:relative;width:260px;height:260px;margin:0 auto 28px}
   .arc{position:absolute;inset:0;transform:rotate(-90deg)}
   .arc circle{fill:none;stroke-width:1.5}
   .arc-track{stroke:var(--line)}
   .arc-fill{stroke:var(--accent);stroke-linecap:round;stroke-dasharray:603.2;stroke-dashoffset:603.2}
-  .ring{position:absolute;inset:10px;border-radius:50%;overflow:hidden;box-shadow:var(--shadow)}
+  .ring{position:absolute;inset:37px;border-radius:50%;overflow:hidden;box-shadow:var(--shadow);background:var(--card);display:grid;place-items:center}
   .ring img{width:100%;height:100%;object-fit:cover;filter:saturate(1.04)}
   .ring::after{content:"";position:absolute;inset:0;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(43,33,41,.08)}
+  .ring .fan-center{display:none;gap:4px}
+  .ring.noimg .fan-center{display:flex}
+  .fan-center i{width:7px;height:26px;border-radius:3.5px}
+  /* the logo's bars bent into a wheel — heights roll in a wave while the
+     wheel slowly turns; bars live at radius 106-129, outside the arc (96) */
+  .wheel{position:absolute;inset:0;animation:wheelspin 16s linear infinite}
+  .wheel i{position:absolute;left:calc(50% - 1.6px);top:calc(50% - 18px);width:3.2px;height:18px;border-radius:2px;
+    transform-origin:50% 100%;transform:rotate(var(--a)) translateY(-106px);
+    animation:barwave 1.9s ease-in-out infinite;animation-delay:var(--d)}
+  @keyframes wheelspin{to{transform:rotate(360deg)}}
+  @keyframes barwave{
+    0%,100%{transform:rotate(var(--a)) translateY(-106px) scaleY(.5)}
+    50%{transform:rotate(var(--a)) translateY(-106px) scaleY(1.3)}}
   #analyzing h2{font-size:clamp(30px,4.4vw,40px);font-weight:400;margin-bottom:10px}
   #analyzing .step{color:var(--soft);font-size:16.5px;min-height:26px;font-family:"Bodoni Moda",Georgia,serif;font-style:italic;
     transition:opacity .22s ease,transform .22s ease}
@@ -346,7 +359,6 @@
     background:linear-gradient(135deg,#efe7e0,#e9dfd6)}
   .avoid-teaser .c:nth-child(2n){background:linear-gradient(135deg,#ece2da,#f6efe8)}
   .avoid-teaser span{font-size:12.5px;color:var(--soft)}
-  .ring.noimg{background:conic-gradient(#e0866f 0 25%,#c9a86a 0 50%,#7f9a8f 0 75%,#7a6f9c 0 100%)}
 
   /* footer */
   .foot{border-top:1px solid var(--line);margin-top:0;padding:62px 0 54px}
@@ -412,6 +424,7 @@
   @media(prefers-reduced-motion:reduce){
     *{animation-duration:.001s!important;transition-duration:.08s!important}
     .arc-fill{transition:none!important;stroke-dashoffset:0!important}
+    .wheel,.wheel i{animation:none!important}
   }
 </style>
 <script>
@@ -678,11 +691,12 @@ posthog.init(window.HUE_PH_KEY,{api_host:window.HUE_PH_HOST,defaults:'2026-05-30
 <section class="screen" id="analyzing">
   <div class="wrap stage">
     <div class="ring-wrap">
-      <svg class="arc" viewBox="0 0 200 200" aria-hidden="true">
-        <circle class="arc-track" cx="100" cy="100" r="96"/>
-        <circle class="arc-fill" cx="100" cy="100" r="96" id="arcFill"/>
+      <svg class="arc" viewBox="0 0 260 260" aria-hidden="true">
+        <circle class="arc-track" cx="130" cy="130" r="96"/>
+        <circle class="arc-fill" cx="130" cy="130" r="96" id="arcFill"/>
       </svg>
-      <div class="ring"><img id="previewImg" alt="" /></div>
+      <div class="wheel" id="waveWheel" aria-hidden="true"></div>
+      <div class="ring"><img id="previewImg" alt="" /><span class="fan-center" aria-hidden="true"><i style="background:#e0866f"></i><i style="background:#c9a86a"></i><i style="background:#7f9a8f"></i><i style="background:#7a6f9c"></i></span></div>
     </div>
     <h2 class="serif">Reading your colors…</h2>
     <div class="step" id="stepText">Checking your light</div>
@@ -1231,35 +1245,65 @@ function run(img){
   /* the reveal narrates the REAL measurements the engine just made — honest
      theater, paced like an analyst working: quick mechanical reads first,
      slower deliberation at the end */
+  track('selfie_analyzed',{readable:!!photo});
+  const season=decideSeason(photo);
+  const shades=shadeCountFor(season);
   let seq;
   if(photo){
     const lean=photo.hue!=null
       ? (photo.hue>55?'leaning warm':photo.hue<49?'leaning cool':'near neutral')
       : (photo.warmSig>18?'leaning warm':photo.warmSig<-6?'leaning cool':'near neutral');
     seq=[
-      ["Checking your light — clear",600],
-      ["Locating your face — "+photo.faceCells+" regions read",800],
-      ["Balancing for your lighting",700],
-      ["Reading undertone — "+lean,950],
-      ["Depth index "+Math.round((1-photo.l)*100)+" · contrast "+Math.round(photo.contrast*100),950],
-      ["Placing you on the three axes",1000],
-      ["Ruling out neighboring seasons",1200],
-      ["Composing your palette",1100]
+      ["Checking your light — clear",700],
+      ["Locating your face — "+photo.faceCells+" regions read",900],
+      ["Balancing for your lighting",800],
+      ["Sampling skin, hair & eye zones",900],
+      ["Reading undertone — "+lean,1100],
+      ["Cross-checking your five answers",1000],
+      ["Depth index "+Math.round((1-photo.l)*100)+" · contrast "+Math.round(photo.contrast*100),1100],
+      ["Placing you on the three axes",1100],
+      ["Narrowing to your season family",1150],
+      ["Ruling out neighboring seasons",1300],
+      ["Composing your palette — "+shades+" shades",1200]
     ];
   }else{
-    seq=[
-      ["Reading your five answers",800],
-      ["Weighing undertone & depth",900],
-      ["Ruling out neighboring seasons",1100],
-      ["Matching your seasonal palette",1000]
-    ];
+    seq=quizSeq(shades);
   }
-  track('selfie_analyzed',{readable:!!photo});
-  const season=decideSeason(photo);
   lastInsight=photo?makeInsight(photo,season):"That light was hard to read, so this leans on your answers — retake in daylight anytime to sharpen it.";
   playSteps(seq,()=>render(season));
 }
+function shadeCountFor(season){
+  const det=SEASON_DETAILS[season];
+  return det&&det.palette?det.palette.length:30;
+}
+function quizSeq(shades){
+  return [
+    ["Reading your five answers",900],
+    ["Weighing undertone signals",1000],
+    ["Balancing warm & cool evidence",1000],
+    ["Setting your depth & clarity",1050],
+    ["Narrowing to your season family",1100],
+    ["Ruling out neighboring seasons",1300],
+    ["Composing your palette — "+shades+" shades",1150]
+  ];
+}
+/* the logo's bars bent into a wheel: 44 pills, colors flowing through the
+   brand four, each bar phase-offset so one crest travels the circle */
+function buildWheel(){
+  const w=$('waveWheel');if(!w||w.childElementCount)return;
+  const N=44,T=1.9,rgb=['#e0866f','#c9a86a','#7f9a8f','#7a6f9c']
+    .map(h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)));
+  for(let i=0;i<N;i++){
+    const t=i/N*4,s=Math.floor(t),f=t-s,a=rgb[s%4],b=rgb[(s+1)%4];
+    const bar=document.createElement('i');
+    bar.style.setProperty('--a',(i/N*360)+'deg');
+    bar.style.setProperty('--d',(-(i/N)*T).toFixed(3)+'s');
+    bar.style.background='rgb('+a.map((v,j)=>Math.round(v+(b[j]-v)*f)).join(',')+')';
+    w.appendChild(bar);
+  }
+}
 function playSteps(seq,done){
+  buildWheel();
   const el=$('stepText'),arc=$('arcFill');
   const total=seq.reduce((a,s)=>a+s[1],0)+300;
   if(arc){ /* the arc draws over exactly the length of the sequence */
@@ -1285,12 +1329,7 @@ function runQuizOnly(){
   show('analyzing');
   lastInsight=null;
   const season=decideSeason(null);
-  playSteps([
-    ["Reading your five answers",800],
-    ["Weighing undertone & depth",900],
-    ["Ruling out neighboring seasons",1100],
-    ["Matching your seasonal palette",1000]
-  ],()=>{render(season);
+  playSteps(quizSeq(shadeCountFor(season)),()=>{render(season);
     const ins=$('insight');ins.hidden=false;
     ins.innerHTML='Estimated from your five answers — add a daylight selfie anytime to sharpen it. <a href="#" onclick="show(\'capture\');return false;">Add my selfie</a>';
   });
