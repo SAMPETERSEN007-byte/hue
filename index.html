@@ -1110,21 +1110,26 @@ function mapSeason(warm,depth,chroma){
 }
 function decideSeason(photo){
   // Blend the quiz (reliable for undertone) with the photo (depth + chroma).
-  let warmScore=st.warm, depth=0.55, chroma=0.34;
+  let warmScore=st.warm, depth=0.55, chroma=0.34, nud=0.05;
   if(photo){
     /* the selfie is the primary undertone read. Two independent visual signals vote:
        the white-balanced red-blue split (proven thresholds 18/-6, asymmetric because
        skin R-B skews positive; extreme reads ±3) and the CIELAB hue angle of the
-       skin (yellow-leaning warm, pink-leaning cool). Together they can outvote a
-       hesitant quiz; a fully consistent quiz still stands. */
+       skin (yellow-leaning warm, pink-leaning cool). */
     const w=photo.warmSig;
     let vote = w>40?3 : w>18?1.5 : w<-20?-3 : w<-6?-1.5 : 0;
     if(photo.hue!=null)vote += photo.hue>63?2 : photo.hue>58?1 : photo.hue<44?-2 : photo.hue<48?-1 : 0;
-    warmScore += Math.max(-4,Math.min(4,vote));
+    vote=Math.max(-4,Math.min(4,vote));
+    /* confidence weighting: the surer the visual read, the less the questionnaire
+       can move it — the SAME photo must give the same season unless it is genuinely
+       borderline, in which case the answers break the tie */
+    const conf=Math.min(1,Math.abs(vote)/3);
+    warmScore = st.warm*(1-.65*conf) + vote;
     depth=photo.l; chroma=photo.s;
+    nud=0.025; /* with a photo, answers only tip depth/chroma near a boundary */
   }
-  depth  = Math.max(0,Math.min(1, depth  + st.light *0.05));
-  chroma = Math.max(0,Math.min(1, chroma + st.chroma*0.05));
+  depth  = Math.max(0,Math.min(1, depth  + st.light *nud));
+  chroma = Math.max(0,Math.min(1, chroma + st.chroma*nud));
   /* undertone tie: the selfie leans it; without a selfie, cool-neutral is the
      safer read — never a silent warm default */
   const warm = warmScore!==0 ? warmScore>0
