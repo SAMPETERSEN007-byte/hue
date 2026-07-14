@@ -333,7 +333,10 @@
   .mrow:last-child{border-bottom:0}
   .mrow svg{width:18px;height:18px;flex:0 0 auto;margin-top:2px;fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .avoid-teaser{display:flex;align-items:center;gap:10px;margin-top:12px}
-  .avoid-teaser .c{width:34px;height:34px;border-radius:10px;filter:blur(7px);flex:0 0 auto}
+  /* placeholder chips — the real retire colors never render until unlock */
+  .avoid-teaser .c{width:34px;height:34px;border-radius:10px;flex:0 0 auto;
+    background:linear-gradient(135deg,#efe7e0,#e9dfd6)}
+  .avoid-teaser .c:nth-child(2n){background:linear-gradient(135deg,#ece2da,#f6efe8)}
   .avoid-teaser span{font-size:12.5px;color:var(--soft)}
   .ring.noimg{background:conic-gradient(#e0866f 0 25%,#c9a86a 0 50%,#7f9a8f 0 75%,#7a6f9c 0 100%)}
 
@@ -1206,44 +1209,57 @@ function run(img){
     track('selfie_rejected',{reason:reason||'error',attempt:photoTries});
     return;
   }
-  /* the reveal narrates the REAL measurements the engine just made —
-     honest theater: every number on screen came from this photo */
-  let steps;
+  /* the reveal narrates the REAL measurements the engine just made — honest
+     theater, paced like an analyst working: quick mechanical reads first,
+     slower deliberation at the end */
+  let seq;
   if(photo){
     const lean=photo.hue!=null
       ? (photo.hue>55?'leaning warm':photo.hue<49?'leaning cool':'near neutral')
       : (photo.warmSig>18?'leaning warm':photo.warmSig<-6?'leaning cool':'near neutral');
-    steps=[
-      "Checking your light — clear",
-      "Locating your face — "+photo.faceCells+" regions read",
-      "Balancing for your lighting",
-      "Undertone: "+lean,
-      "Depth index "+Math.round((1-photo.l)*100)+" · contrast "+Math.round(photo.contrast*100),
-      "Matching against the twelve seasons"
+    seq=[
+      ["Checking your light — clear",600],
+      ["Locating your face — "+photo.faceCells+" regions read",800],
+      ["Balancing for your lighting",700],
+      ["Reading undertone — "+lean,950],
+      ["Depth index "+Math.round((1-photo.l)*100)+" · contrast "+Math.round(photo.contrast*100),950],
+      ["Placing you on the three axes",1000],
+      ["Ruling out neighboring seasons",1200],
+      ["Composing your palette",1100]
     ];
   }else{
-    steps=["Reading your five answers","Weighing undertone & depth","Matching your seasonal palette","Composing your colors"];
+    seq=[
+      ["Reading your five answers",800],
+      ["Weighing undertone & depth",900],
+      ["Ruling out neighboring seasons",1100],
+      ["Matching your seasonal palette",1000]
+    ];
   }
-  let i=0;$('stepText').textContent=steps[0];
-  const iv=setInterval(()=>{i++;if(i<steps.length)$('stepText').textContent=steps[i];},650);
   track('selfie_analyzed',{readable:!!photo});
   const season=decideSeason(photo);
   lastInsight=photo?makeInsight(photo,season):"That light was hard to read, so this leans on your answers — retake in daylight anytime to sharpen it.";
-  setTimeout(()=>{clearInterval(iv);render(season);},photo?4300:2600);
+  playSteps(seq,()=>render(season));
+}
+function playSteps(seq,done){
+  let t=0;
+  for(const [txt,ms] of seq){setTimeout(()=>{$('stepText').textContent=txt;},t);t+=ms;}
+  setTimeout(done,t+300);
 }
 function runQuizOnly(){
   $('previewImg').style.display='none';$('previewImg').removeAttribute('src');
   document.querySelector('.ring').classList.add('noimg');
   show('analyzing');
-  const steps=["Reading your five answers","Weighing undertone & depth","Matching your seasonal palette"];
-  let i=0;$('stepText').textContent=steps[0];
-  const iv=setInterval(()=>{i++;if(i<steps.length)$('stepText').textContent=steps[i];},600);
   lastInsight=null;
   const season=decideSeason(null);
-  setTimeout(()=>{clearInterval(iv);render(season);
+  playSteps([
+    ["Reading your five answers",800],
+    ["Weighing undertone & depth",900],
+    ["Ruling out neighboring seasons",1100],
+    ["Matching your seasonal palette",1000]
+  ],()=>{render(season);
     const ins=$('insight');ins.hidden=false;
     ins.innerHTML='Estimated from your five answers — add a daylight selfie anytime to sharpen it. <a href="#" onclick="show(\'capture\');return false;">Add my selfie</a>';
-  },1800);
+  });
 }
 function render(season){
   currentSeason=season;const d=SEASONS[season];
@@ -1275,7 +1291,7 @@ function applyLocked(){
     <h4 class="serif">Colors to retire — a preview</h4>
     <div class="rc-sub">One of your six, on us. The report names the other five — and why.</div>
     <div class="avoid-row"><div class="c" style="background:${det.avoid[0].hex}"></div><div><b>${det.avoid[0].name}</b><span>${det.avoid[0].why}</span></div></div>
-    <div class="avoid-teaser">${det.avoid.slice(1).map(a=>`<div class="c" style="background:${a.hex}"></div>`).join('')}<span>plus five more working against you</span></div>
+    <div class="avoid-teaser">${det.avoid.slice(1).map(()=>'<div class="c"></div>').join('')}<span>plus five more working against you</span></div>
   </div>`:''}
   <div class="report-card">
     <h4 class="serif">Inside the ${currentSeason} report</h4>
