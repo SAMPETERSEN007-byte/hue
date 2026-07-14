@@ -34,7 +34,7 @@
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
 {"@type":"Question","name":"How does HUE find my season?","acceptedAnswer":{"@type":"Answer","text":"One selfie, analyzed instantly on your device, is the primary read — it locates your face and measures your undertone, your depth, and the contrast of your natural coloring, the way an analyst reads a draping. Five quick questions — metals, veins, sun response, contrast, whites — sharpen the placement. Together they land you in one of the twelve seasons."}},
 {"@type":"Question","name":"Is my photo uploaded anywhere?","acceptedAnswer":{"@type":"Answer","text":"Never. Your selfie is analyzed in your browser, on your device — it never touches a server. No accounts, no cookies, no ad trackers — only anonymous, cookieless usage counts, which never include your photo or your palette."}},
-{"@type":"Question","name":"What's in the $9 full report?","acceptedAnswer":{"@type":"Answer","text":"Your complete palette of 30+ named shades, the six colors quietly working against you (and why), your makeup formula, hair direction to take to your colorist, and a wardrobe system: neutrals, metals, prints, and three combinations to steal. One-time purchase, no subscription."}},
+{"@type":"Question","name":"What's in the $9 full report?","acceptedAnswer":{"@type":"Answer","text":"Your complete palette of 30+ named shades, the six colors quietly working against you (and why), your makeup formula, hair direction to take to your colorist, and a wardrobe system: neutrals, metals, prints, and three combinations to steal. One-time purchase, no subscription — and the full report is also emailed to you, so it's yours forever on any device."}},
 {"@type":"Question","name":"How is this different from a $300 draping?","acceptedAnswer":{"@type":"Answer","text":"An in-person analyst drapes dozens of fabrics against your face over a couple of hours — it's the gold standard, and it costs $200–400. HUE uses the same 12-season system, self-served: your answers plus a daylight selfie, in about two minutes."}},
 {"@type":"Question","name":"What if I'm not happy with it?","acceptedAnswer":{"@type":"Answer","text":"Every purchase has a 30-day money-back guarantee. Email us, get your $9 back, no questions asked."}},
 {"@type":"Question","name":"Do I need an account?","acceptedAnswer":{"@type":"Answer","text":"No account, no sign-up, no emails from us. Your result and your unlock live on your device — and if you ever lose access, your receipt restores it."}}
@@ -610,7 +610,7 @@ posthog.init(window.HUE_PH_KEY,{api_host:window.HUE_PH_HOST,defaults:'2026-05-30
         </details>
         <details>
           <summary>What's in the $9 full report?</summary>
-          <div class="a">Your complete palette of 30+ named shades, the six colors quietly working against you (and why), your makeup formula — the foundation ask, lip and blush shades, eyes — hair direction to take to your colorist, and a wardrobe system: your neutrals, your metals, your prints, and three combinations to steal. One-time purchase, no subscription.</div>
+          <div class="a">Your complete palette of 30+ named shades, the six colors quietly working against you (and why), your makeup formula — the foundation ask, lip and blush shades, eyes — hair direction to take to your colorist, and a wardrobe system: your neutrals, your metals, your prints, and three combinations to steal. One-time purchase, no subscription — and the full report is also emailed to you, so it's yours forever on any device.</div>
         </details>
         <details>
           <summary>How is this different from a $300 draping?</summary>
@@ -729,11 +729,12 @@ posthog.init(window.HUE_PH_KEY,{api_host:window.HUE_PH_HOST,defaults:'2026-05-30
         <button id="unlockBtn" class="btn btn-ink btn-block" onclick="checkout()">Unlock my full report — $9</button>
         <div class="price" style="margin-top:12px">If it doesn't ring true, email us within 30 days and your $9 comes back — <a href="refunds.html" target="_blank" rel="noopener">no questions asked</a>.</div>
         <div class="price">One-time $9 · no subscription, ever · your photo never left your device</div>
+        <div class="price">Your full report is also sent to your email — a permanent copy, on any device, forever.</div>
         <div class="price">Checkout by Stripe — about 30 seconds, right back here. Paid elsewhere? <a href="mailto:sampetersen909@gmail.com?subject=Restore%20my%20HUE%20unlock&amp;body=Hi%20%E2%80%94%20I%20bought%20the%20HUE%20report.%20Forwarding%20my%20Stripe%20receipt%20%E2%80%94%20please%20restore%20my%20unlock.">Restore access</a></div>
       </div>
       <div id="unlockedBadge" style="display:none">
         <div class="unlocked-note"><svg viewBox="0 0 24 24"><path d="M4.5 12.5l5 5L19.5 7"/></svg> Full report unlocked — it's yours forever on this device</div>
-        <div class="price">Screenshot your palette, and keep your Stripe receipt — it restores your report anywhere.</div>
+        <div class="price">A permanent copy is on its way to the email you used at checkout — yours on any device, forever.</div>
       </div>
       <div id="shareBlock" style="display:none;text-align:center;margin-top:18px">
         <h3 class="serif" style="font-size:22px;margin-bottom:6px">Know someone who wears the wrong colors?</h3>
