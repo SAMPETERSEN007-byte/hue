@@ -1239,7 +1239,8 @@ function ensureCascade(){
     .catch(()=>{cascadeP=null;});
   return cascadeP;
 }
-const FACE_Q=10; /* min clustered detection score — tuned on portrait/non-face suite */
+const FACE_Q=6; /* min clustered detection score — real-photo suite: weakest true
+  face clusters ~8-21 on awkward scale ladders, non-faces score <=0.6 */
 function detectFace(img){
   /* pico is rotation-sensitive: upright first, then a +-15 degree retry —
      selfie head-tilt is common. On a rotated hit, features sample in the
@@ -1287,6 +1288,7 @@ function analyzePhoto(img){
   };
   const grid=new Float32Array(G*G),vGrid=new Float32Array(G*G);
   let sceneSum=0,sceneSum2=0,sceneN=0,sceneBright=0;
+  let sceneR=0,sceneG=0,sceneB=0,sceneMidN=0;
   for(let gy=0;gy<G;gy++)for(let gx=0;gx<G;gx++){
     let n=0,t=0,sy=0,sy2=0;
     for(let y=gy*C;y<(gy+1)*C;y+=2)for(let x=gx*C;x<(gx+1)*C;x+=2){
@@ -1294,23 +1296,24 @@ function analyzePhoto(img){
       if(isSkin(r,g,b))n++;
       const ly=.299*r+.587*g+.114*b;sy+=ly;sy2+=ly*ly;
       sceneSum+=ly;sceneSum2+=ly*ly;sceneN++;if(ly>250)sceneBright++;
+      if(ly>50&&ly<235){sceneR+=r;sceneG+=g;sceneB+=b;sceneMidN++;}
     }
     grid[gy*G+gx]=n/t;
     vGrid[gy*G+gx]=sy2/t-(sy/t)*(sy/t);
   }
-  /* scene-level light gates: refuse what can't be read honestly */
+  /* scene-level light gates: refuse what can't be read honestly. A daylight
+     product needs daylight — dim indoor scenes (mean<56) read untrustworthy. */
   const sceneMean=sceneSum/sceneN;
-  if(sceneMean<42)return {fail:'dark'};
-  if(sceneBright/sceneN>.30)return {fail:'blown'};
-  /* overexposure that never clips: a bright scene with crushed contrast —
-     the histogram is squeezed against the top, the undertone is bleached */
+  if(sceneMean<56)return {fail:'dark'};
   const sceneStd=Math.sqrt(Math.max(0,sceneSum2/sceneN-sceneMean*sceneMean));
-  if((sceneMean>190&&sceneStd<30)||(sceneMean>205&&sceneStd<34))return {fail:'blown'};
-  /* the REAL face gate — AFTER the light gates: pico also fails in the dark,
-     and a user in a dim room must hear "too dim", not "no face found".
-     When the cascade is loaded, an actual detected face is required —
-     skin-toned texture (wood, sand, fur, food) no longer passes; if it
-     failed to load, the heuristics below still stand. */
+  if(!faceClassify){
+    /* heuristics-only fallback (cascade unavailable) keeps whole-scene gates */
+    if(sceneBright/sceneN>.30)return {fail:'blown'};
+    if((sceneMean>190&&sceneStd<30)||(sceneMean>205&&sceneStd<34))return {fail:'blown'};
+  }
+  /* the REAL face gate — after the dark gate (pico also fails in the dark,
+     and a dim room must hear "too dim", not "no face found"). When the
+     cascade is loaded, an actual detected face is required. */
   const face=faceClassify?detectFace(img):undefined;
   if(faceClassify&&!face)return {fail:'noface'};
   let mask=null,maskN=0;
@@ -1322,6 +1325,24 @@ function analyzePhoto(img){
     for(let gy=0;gy<G;gy++)for(let gx=0;gx<G;gx++){
       const dx=(gx+.5)*C-fx,dy=(gy+.5)*C-fy;
       if(dx*dx+dy*dy<=fr*fr){mask[gy*G+gx]=1;maskN++;}
+    }
+    /* blown is judged where the FACE is — a clipped white backdrop must
+       never reject a well-lit face (measured: a studio-white portrait hit
+       41% clipped pixels scene-wide with a perfectly readable face) */
+    let fSum=0,fSum2=0,fN=0,fBright=0;
+    for(let c=0;c<G*G;c++){
+      if(!mask[c])continue;
+      const gy=(c/G)|0,gx=c%G;
+      for(let y=gy*C;y<(gy+1)*C;y+=2)for(let x=gx*C;x<(gx+1)*C;x+=2){
+        const i=((y|0)*S+(x|0))*4;
+        const ly=.299*d[i]+.587*d[i+1]+.114*d[i+2];
+        fSum+=ly;fSum2+=ly*ly;fN++;if(ly>250)fBright++;
+      }
+    }
+    if(fN>200){
+      const fMean=fSum/fN,fStd=Math.sqrt(Math.max(0,fSum2/fN-fMean*fMean));
+      if(fBright/fN>.30)return {fail:'blown'};
+      if((fMean>190&&fStd<30)||(fMean>205&&fStd<34))return {fail:'blown'};
     }
   }
   /* a skin cell must also have texture — beige walls are skin-chromatic but FLAT,
@@ -1365,14 +1386,28 @@ function analyzePhoto(img){
       if(ly>50&&ly<235){bgR+=r;bgG+=g;bgB+=b;bgN++;}
     }
   }
-  /* severe color cast: undertone can't be trusted under heavily tinted light */
-  /* a pico-confirmed face relaxes the cast gate: von Kries handles moderate
-     warm interiors, and face-anchored sampling no longer mistakes a warm
-     backdrop for the skin itself. Heavy tints still refuse. */
+  /* dark or colored backdrops leave no neutral sample — fall back to the
+     whole scene's midtones (face included). A weaker anchor: correction
+     still applies, tighter-clamped so a warm face can't erase itself, and
+     rejection demands a far stronger tint signal. Without this fallback,
+     stage-lit photos skipped white balance entirely and amber light read
+     as amber skin. */
+  let bgWeak=false;
+  if(bgN<=500&&sceneMidN>800){bgR=sceneR;bgG=sceneG;bgB=sceneB;bgN=sceneMidN;bgWeak=true;}
+  /* severe color cast: undertone can't be trusted under heavily tinted light.
+     A pico-confirmed face relaxes the gate: von Kries handles moderate warm
+     interiors, and face-anchored sampling no longer mistakes a warm backdrop
+     for the skin itself. Heavy tints still refuse. */
   if(bgN>500){
     const rm=bgR/bgN,gm=bgG/bgN,bm=bgB/bgN;
-    const castR=face?80:62,castG=face?58:45;
-    if(Math.abs(rm-bm)>castR||Math.abs(gm-(rm+bm)/2)>castG)return {fail:'cast'};
+    if(bgWeak){
+      /* the weak anchor is confounded with the subject's own warmth — judge
+         only the green/magenta axis, which no complexion produces on its own */
+      if(Math.abs(gm-(rm+bm)/2)>66)return {fail:'cast'};
+    }else{
+      const castR=face?80:62,castG=face?58:45;
+      if(Math.abs(rm-bm)>castR||Math.abs(gm-(rm+bm)/2)>castG)return {fail:'cast'};
+    }
   }
   /* ================= feature sampling (engine v4) =================
      The promise is literal: skin from cheeks & forehead, hair from the
@@ -1472,9 +1507,16 @@ function analyzePhoto(img){
      feature — clamped so a colorful backdrop can't overcorrect */
   let kr=1,kg=1,kb=1;
   if(bgN>500){
-    const rm=bgR/bgN,gm=bgG/bgN,bm=bgB/bgN,gray=(rm+gm+bm)/3;
-    const k=v=>Math.max(.78,Math.min(1.32,v));
-    kr=k(gray/rm);kg=k(gray/gm);kb=k(gray/bm);
+    const rm=bgR/bgN,gm=bgG/bgN,bm=bgB/bgN;
+    if(bgWeak){
+      /* weak anchor: correct only the green/magenta lighting axis — pulling
+         r vs b toward gray would erase the subject's own undertone */
+      kg=Math.max(.87,Math.min(1.15,((rm+bm)/2)/gm));
+    }else{
+      const gray=(rm+gm+bm)/3;
+      const k=v=>Math.max(.78,Math.min(1.32,v));
+      kr=k(gray/rm);kg=k(gray/gm);kb=k(gray/bm);
+    }
   }
   R*=kr;Gc*=kg;B*=kb;
   if(eyeRGB)eyeRGB=[eyeRGB[0]*kr,eyeRGB[1]*kg,eyeRGB[2]*kb];
@@ -1489,6 +1531,13 @@ function analyzePhoto(img){
   const voteHue=vC>8?Math.atan2(vBst,vA)*180/Math.PI:null;
   const [,satRaw,lSkin]=rgb2hsl(R,Gc,B);
   if(lSkin<.13)return {fail:'dark'};
+  /* physiology gates: real skin is never achromatic, never neon, and never
+     a clipped channel — each means the LIGHT was lying (filters, stage
+     tint, hard flash on gloss) */
+  const [,pA,pB]=rgb2lab(R,Gc,B);
+  const pChroma=Math.hypot(pA,pB);
+  if(pChroma<7||pChroma>42)return {fail:'cast'};
+  if(R>=250)return {fail:'blown'};
   let eyeName=null,eyeC=0,eyeHue=0,lEye=null;
   if(eyeRGB){
     const [eL,ea,eb]=rgb2lab(eyeRGB[0],eyeRGB[1],eyeRGB[2]);
