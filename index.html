@@ -236,6 +236,14 @@
   .reveal-head p{color:var(--soft);font-size:17px;max-width:470px;margin:16px auto 0}
   .chips{display:flex;gap:8px;justify-content:center;margin:22px 0 6px;flex-wrap:wrap}
   .chip{border:1.5px solid rgba(43,33,41,.24);border-radius:2px;padding:7px 16px;font-size:12.5px;font-weight:600;letter-spacing:.02em}
+  /* the tones the engine actually measured — shown only on the selfie path */
+  .measured{margin-top:30px}
+  .measured-label{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--soft);font-weight:600;margin-bottom:14px}
+  .measured-row{display:flex;gap:20px;justify-content:center;flex-wrap:wrap}
+  .msw{width:76px}
+  .msw i{display:block;height:48px;border-radius:2px;box-shadow:var(--shadow-sm),inset 0 0 0 1px rgba(43,33,41,.10)}
+  .msw b{display:block;font-size:10.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);margin-top:8px}
+  .msw small{display:block;font-size:10.5px;color:var(--soft);line-height:1.35;margin-top:2px}
   .card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;max-width:560px;margin:28px auto 0;border:1px solid var(--line)}
   .card .band{height:16px;display:flex}.card .band i{flex:1}
   .card .inner{padding:28px 30px 32px}
@@ -713,6 +721,10 @@ posthog.init(window.HUE_PH_KEY,{api_host:window.HUE_PH_HOST,defaults:'2026-05-30
       <p id="seasonDesc"></p>
       <p class="insight" id="insight" hidden></p>
       <div class="chips" id="chips"></div>
+      <div class="measured" id="measured" hidden>
+        <div class="measured-label">Measured from your selfie</div>
+        <div class="measured-row" id="measuredRow"></div>
+      </div>
     </div>
 
     <div class="card" id="shareCard">
@@ -1237,7 +1249,10 @@ function detectFace(img){
   dets=pico.cluster_detections(dets,.2).filter(dt=>dt[3]>=FACE_Q);
   if(!dets.length)return null;
   dets.sort((a,b)=>b[3]-a[3]);
-  return {r:dets[0][0],c:dets[0][1],s:dets[0][2],q:dets[0][3],D:D};
+  /* the rgba buffer rides along: features (iris, lips, patches) sample at
+     this resolution — on a half-body shot the 260px canvas leaves a ~5px
+     iris, far too coarse to read */
+  return {r:dets[0][0],c:dets[0][1],s:dets[0][2],q:dets[0][3],D:D,rgba:rgba};
 }
 function analyzePhoto(img){
   const cv=$('cv'),ctx=cv.getContext('2d'),S=260;
@@ -1331,60 +1346,178 @@ function analyzePhoto(img){
     const castR=face?80:62,castG=face?58:45;
     if(Math.abs(rm-bm)>castR||Math.abs(gm-(rm+bm)/2)>castG)return {fail:'cast'};
   }
-  /* median skin color — robust to specular highlights and stray shadows */
-  const rs=[],gs=[],bs=[];let blown=0;
+  /* ================= feature sampling (engine v4) =================
+     The promise is literal: skin from cheeks & forehead, hair from the
+     crown band, iris color, lip undertone. Geometry comes from the pico
+     detection (canonical frontal-face layout); every patch keeps only
+     pixels that survive its own filter and falls back gracefully. */
+  const med=a=>{a.sort((p,q)=>p-q);return a[a.length>>1];};
+  const lumOf=(r,g,b)=>(.299*r+.587*g+.114*b)/255;
+  const hex=(r,g,b)=>'#'+[r,g,b].map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');
+  /* feature sampling runs on the 400px detection buffer when a face was
+     found (fine enough to read an iris on a half-body shot); geometry and
+     buffer fall back to the 260px canvas + blob box when it wasn't */
+  const FB=face?face.rgba:d, FW=face?face.D:S;
+  const fx=face?face.c:((x0+x1+1)/2)*C,
+        fy=face?face.r:((y0+y1+1)/2)*C,
+        fs=face?face.s:(y1-y0+1)*C;
+  const collect=(cx,cy,hw,hh,keep)=>{
+    const out=[];
+    for(let y=Math.max(0,Math.round(cy-hh));y<Math.min(FW,Math.round(cy+hh));y++)
+      for(let x=Math.max(0,Math.round(cx-hw));x<Math.min(FW,Math.round(cx+hw));x++){
+        const i=(y*FW+x)*4,r=FB[i],g=FB[i+1],b=FB[i+2];
+        if(keep(r,g,b))out.push([r,g,b,lumOf(r,g,b)]);
+      }
+    return out;
+  };
+  const medOf=set=>[med(set.map(p=>p[0])),med(set.map(p=>p[1])),med(set.map(p=>p[2]))];
+  /* whole-face median: the blown-light gate + skin fallback */
+  const rsAll=[],gsAll=[],bsAll=[];let blown=0;
   for(const c of best){
     const gy=(c/G)|0,gx=c%G;
     for(let y=gy*C;y<(gy+1)*C;y+=2)for(let x=gx*C;x<(gx+1)*C;x+=2){
       const i=((y|0)*S+(x|0))*4,r=d[i],g=d[i+1],b=d[i+2];
-      if(isSkin(r,g,b)){rs.push(r);gs.push(g);bs.push(b);if(r>=252||g>=252||b>=252)blown++;}
+      if(isSkin(r,g,b)){rsAll.push(r);gsAll.push(g);bsAll.push(b);if(r>=252||g>=252||b>=252)blown++;}
     }
   }
-  const n=rs.length;
+  const n=rsAll.length;
   if(n<60)return {fail:'noface'};
   if(blown/n>.22)return {fail:'blown'};
-  const med=a=>{a.sort((p,q)=>p-q);return a[a.length>>1];};
-  let R=med(rs),Gc=med(gs),B=med(bs);
-  /* von Kries white balance against the scene: neutralize the light, clamped so a
-     colorful background can't overcorrect a genuine undertone */
+  /* SKIN — two cheeks + forehead, skin-classified pixels only; the median of
+     each usable patch, averaged. Beard or bangs simply drop their patch. */
+  const cheekL=collect(fx-.22*fs,fy+.10*fs,.09*fs,.09*fs,isSkin);
+  const cheekR=collect(fx+.22*fs,fy+.10*fs,.09*fs,.09*fs,isSkin);
+  const fore  =collect(fx,fy-.30*fs,.16*fs,.07*fs,isSkin);
+  const patches=[cheekL,cheekR,fore].filter(p=>p.length>=40);
+  let R,Gc,B;
+  if(patches.length>=2){
+    const meds=patches.map(medOf);
+    R=meds.reduce((a,m)=>a+m[0],0)/meds.length;
+    Gc=meds.reduce((a,m)=>a+m[1],0)/meds.length;
+    B=meds.reduce((a,m)=>a+m[2],0)/meds.length;
+  }else{R=med(rsAll);Gc=med(gsAll);B=med(bsAll);}
+  const lSkinEst=lumOf(R,Gc,B);
+  /* EYES — iris pixels inside the canonical eye boxes: not skin, not sclera,
+     darker than skin; the darkest quarter (pupil/lashes) and brightest 15%
+     (catchlights) are dropped before the median. Both eyes pool together. */
+  const eyeKeep=(r,g,b)=>{
+    if(isSkin(r,g,b))return false;
+    const ly=lumOf(r,g,b);
+    return ly>.03&&ly<lSkinEst*.92&&!(r>225&&g>225&&b>225);
+  };
+  let eyeSet=collect(fx-.175*fs,fy-.075*fs,.10*fs,.07*fs,eyeKeep)
+      .concat(collect(fx+.175*fs,fy-.075*fs,.10*fs,.07*fs,eyeKeep));
+  let eyeRGB=null;
+  if(eyeSet.length>=30){
+    eyeSet.sort((a,b)=>a[3]-b[3]);
+    const mid=eyeSet.slice(Math.round(eyeSet.length*.25),Math.round(eyeSet.length*.85));
+    if(mid.length>=20)eyeRGB=medOf(mid);
+  }
+  /* LIPS — pixels in the mouth box redder than the skin baseline */
+  const skinRG=R-Gc;
+  const lipSet=collect(fx,fy+.30*fs,.15*fs,.075*fs,(r,g,b)=>{
+    const ly=lumOf(r,g,b);
+    return ly>.12&&ly<.85&&(r-g)>skinRG+9&&r>b;
+  });
+  let lipRGB=lipSet.length>=30?medOf(lipSet):null;
+  /* HAIR — crown band above the face circle. Excluded: forehead look-alikes
+     (skin-classified AND near skin luma) and background-colored pixels (the
+     gray-world scene sample says what the backdrop looks like). What remains
+     is hair; the 20th-70th percentile luminance window is its dominant mass —
+     a darkest-N rule would read a blonde's shadows as brunette. */
+  const bgOK=bgN>500;
+  const bgMR=bgOK?bgR/bgN:0,bgMG=bgOK?bgG/bgN:0,bgMB=bgOK?bgB/bgN:0;
+  const hairSet=collect(fx,fy-.53*fs,.35*fs,.09*fs,(r,g,b)=>{
+    const ly=lumOf(r,g,b);
+    if(isSkin(r,g,b)&&Math.abs(ly-lSkinEst)<.09)return false;
+    if(bgOK&&Math.abs(r-bgMR)<30&&Math.abs(g-bgMG)<30&&Math.abs(b-bgMB)<30)return false;
+    return true;
+  });
+  let lHair=lSkinEst,hairRGB=null;
+  if(hairSet.length>40){
+    hairSet.sort((a,b)=>a[3]-b[3]);
+    const mass=hairSet.slice(Math.round(hairSet.length*.2),Math.round(hairSet.length*.7));
+    lHair=mass.reduce((a,p)=>a+p[3],0)/mass.length;
+    hairRGB=medOf(mass);
+  }
+  /* von Kries white balance against the scene, one set of factors for every
+     feature — clamped so a colorful backdrop can't overcorrect */
+  let kr=1,kg=1,kb=1;
   if(bgN>500){
     const rm=bgR/bgN,gm=bgG/bgN,bm=bgB/bgN,gray=(rm+gm+bm)/3;
     const k=v=>Math.max(.78,Math.min(1.32,v));
-    R*=k(gray/rm);Gc*=k(gray/gm);B*=k(gray/bm);
+    kr=k(gray/rm);kg=k(gray/gm);kb=k(gray/bm);
   }
+  R*=kr;Gc*=kg;B*=kb;
+  if(eyeRGB)eyeRGB=[eyeRGB[0]*kr,eyeRGB[1]*kg,eyeRGB[2]*kb];
+  if(lipRGB)lipRGB=[lipRGB[0]*kr,lipRGB[1]*kg,lipRGB[2]*kb];
+  if(hairRGB)hairRGB=[hairRGB[0]*kr,hairRGB[1]*kg,hairRGB[2]*kb];
+  /* the undertone VOTE stays on the whole-face median — decideSeason's
+     warmSig/hue thresholds were calibrated on that read; the purer patch
+     skin runs ~6° lower in hue and would silently shift every boundary */
+  const vR=med(rsAll)*kr,vG=med(gsAll)*kg,vB=med(bsAll)*kb;
+  const [,vA,vBst]=rgb2lab(vR,vG,vB);
+  const vC=Math.hypot(vA,vBst);
+  const voteHue=vC>8?Math.atan2(vBst,vA)*180/Math.PI:null;
   const [,satRaw,lSkin]=rgb2hsl(R,Gc,B);
   if(lSkin<.13)return {fail:'dark'};
-  /* hair band: from just above the face box down into its top third — melanin-colored
-     hair (brown/blonde) is chromatically skin and merges into the blob, so sample
-     inside the top too. Exclude forehead look-alikes (skin-classified AND near skin
-     luma), then take the darkest 30% of what remains. */
-  const bandY0=Math.max(0,(y0-4)*C), bandY1=Math.min(S,Math.round((y0+(y1-y0+1)*.35)*C));
-  const lum=[];
-  for(let y=bandY0;y<bandY1;y+=2)for(let x=x0*C;x<(x1+1)*C&&x<S;x+=2){
-    const i=((y|0)*S+(x|0))*4,r=d[i],g=d[i+1],b=d[i+2];
-    const ly=(.299*r+.587*g+.114*b)/255;
-    if(isSkin(r,g,b)&&Math.abs(ly-lSkin)<.09)continue;
-    lum.push(ly);
+  /* eye reading: LAB hue + chroma name the iris; low chroma is gray/deep */
+  let eyeName=null,eyeC=0,eyeHue=0,lEye=null;
+  if(eyeRGB){
+    const [eL,ea,eb]=rgb2lab(eyeRGB[0],eyeRGB[1],eyeRGB[2]);
+    eyeC=Math.hypot(ea,eb);
+    eyeHue=((Math.atan2(eb,ea)*180/Math.PI)+360)%360;
+    lEye=eL/100;
+    eyeName=eyeC<9?(eL<38?'deep brown':'gray')
+      :eyeHue<95?(eL<32?'deep brown':eL<48?(eyeC>28?'amber brown':'brown'):(eyeC>20?'hazel':'light brown'))
+      :eyeHue<165?'green'
+      :eyeHue<205?'gray-blue':'blue';
   }
-  let lHair=lSkin;
-  if(lum.length>40){
-    lum.sort((a,b)=>a-b);
-    const cut=Math.max(8,Math.round(lum.length*.3));let s2=0;
-    for(let i2=0;i2<cut;i2++)s2+=lum[i2];
-    lHair=s2/cut;
+  /* lip undertone: a strong chroma reading means lipstick — discard it */
+  let lipHue=null;
+  if(lipRGB){
+    const [,la,lb]=rgb2lab(lipRGB[0],lipRGB[1],lipRGB[2]);
+    const lipC=Math.hypot(la,lb);
+    if(lipC>45)lipRGB=null;else lipHue=((Math.atan2(lb,la)*180/Math.PI)+360)%360;
   }
   const contrast=Math.min(.6,Math.abs(lSkin-lHair));
-  /* clarity the way an analyst reads it: feature contrast, steadied by skin saturation
-     (calibrated to the bright>0.44 / soft<0.26 axis: blonde-on-fair ~.25 soft,
-      brown-on-medium ~.38 true, black-on-fair ~.46 bright) */
-  const chromaAxis=Math.max(0,Math.min(1,.6*satRaw+.45*contrast));
-  /* undertone in CIELAB, computed from the white-balanced skin color:
-     hue angle = atan2(b*,a*) — yellow-leaning skin reads warm, pink-leaning cool.
-     Near-neutral skin (tiny a*,b*) has no meaningful hue: report null, don't guess. */
+  /* clarity the way an analyst reads it: skin saturation + feature contrast,
+     sharpened by a clearly-colored iris (calibrated to bright>0.44/soft<0.26) */
+  const eyeClarity=eyeRGB?Math.max(0,Math.min(1,(eyeC-8)/30)):null;
+  const chromaAxis=Math.max(0,Math.min(1,
+    .55*satRaw+.42*contrast+(eyeClarity!=null?.10*eyeClarity:.03)));
+  /* depth: skin leads, hair and eyes shade it the way an analyst weighs the
+     whole head — deviations from mid keep the calibration center unmoved */
+  const depthAxis=Math.max(0,Math.min(1,
+    lSkin+.16*(lHair-.42)+(lEye!=null?.08*(lEye-.30):0)));
+  /* patch-skin LAB — the display read; the vote fields above stay on the
+     whole-face scale the thresholds know */
   const [,aStar,bStar]=rgb2lab(R,Gc,B);
   const labC=Math.hypot(aStar,bStar);
-  const hue=labC>8?Math.atan2(bStar,aStar)*180/Math.PI:null;
-  return {warmSig:R-B, hue, labC, l:lSkin, s:chromaAxis, satRaw, contrast, hairL:lHair, faceCells:best.length};
+  const hue=voteHue;
+  /* secondary warm evidence — eyes, hair, lips each lean the undertone a
+     little; never enough to outvote the skin itself (±1 on a ±4 scale) */
+  let warmAux=0;
+  if(eyeName){
+    /* deep brown is most of humanity — nearly uninformative; the rarer,
+       clearly-warm irises (amber, hazel) carry the real signal */
+    if(/amber|hazel/.test(eyeName))warmAux+=.35;
+    else if(eyeName==='brown'||eyeName==='light brown')warmAux+=.25;
+    else if(eyeName==='deep brown')warmAux+=.15;
+    else if(/blue/.test(eyeName))warmAux-=.35;
+    else if(eyeName==='gray')warmAux-=.15;
+  }
+  if(hairRGB)warmAux+=Math.max(-.3,Math.min(.3,(hairRGB[0]-hairRGB[2]-12)/120));
+  if(lipHue!=null)warmAux+=lipHue>45?.3:lipHue>28?.1:lipHue<18?-.3:0;
+  warmAux=Math.max(-1,Math.min(1,warmAux));
+  return {warmSig:vR-vB, hue, labC, l:depthAxis, s:chromaAxis, satRaw, contrast,
+    hairL:lHair, faceCells:best.length, warmAux,
+    skinL:lSkin, patches:patches.length,
+    skinHex:hex(R,Gc,B),
+    hairHex:hairRGB?hex(hairRGB[0],hairRGB[1],hairRGB[2]):null,
+    eyeHex:eyeRGB?hex(eyeRGB[0],eyeRGB[1],eyeRGB[2]):null,
+    lipHex:lipRGB?hex(lipRGB[0],lipRGB[1],lipRGB[2]):null,
+    eyeName, lEye, eyeC};
 }
 function mapSeason(warm,depth,chroma){
   // depth (deep/light) is the most defining axis, so it is checked first.
@@ -1401,8 +1534,14 @@ function decideSeason(photo){
        skin R-B skews positive; extreme reads ±3) and the CIELAB hue angle of the
        skin (yellow-leaning warm, pink-leaning cool). */
     const w=photo.warmSig;
-    let vote = w>40?3 : w>18?1.5 : w<-20?-3 : w<-6?-1.5 : 0;
+    /* the +-3 certainty band starts at 55, not 40: fair skin inflates raw
+       R-B into the mid-40s on its own (measured), while genuinely warm skin
+       reads 80+ — mid-40s is a lean, not a verdict */
+    let vote = w>55?3 : w>18?1.5 : w<-20?-3 : w<-6?-1.5 : 0;
     if(photo.hue!=null)vote += photo.hue>63?2 : photo.hue>58?1 : photo.hue<44?-2 : photo.hue<48?-1 : 0;
+    /* eyes, hair and lips lean the read a little (engine v4) — capped at ±1
+       so the skin itself always outvotes them */
+    if(photo.warmAux)vote+=photo.warmAux;
     vote=Math.max(-4,Math.min(4,vote));
     /* confidence weighting: the surer the visual read, the less the questionnaire
        can move it — the SAME photo must give the same season unless it is genuinely
@@ -1456,7 +1595,7 @@ $('fileUp').addEventListener('change',onFilePicked);
 
 /* one perceptive line derived from where the selfie and the answers disagreed —
    only claims backed by the actual signals, and only when the final season is consistent with them */
-let lastInsight=null;
+let lastInsight=null,lastPhotoRead=null;
 function makeInsight(photo,season){
   const qWarm=st.warm, seasonWarm=/Spring|Autumn/.test(season);
   if(photo){
@@ -1499,6 +1638,7 @@ async function run(img){
   track('selfie_analyzed',{readable:!!photo});
   const season=decideSeason(photo);
   const shades=shadeCountFor(season);
+  lastPhotoRead=photo;
   let seq;
   if(photo){
     const lean=photo.hue!=null
@@ -1508,15 +1648,17 @@ async function run(img){
       ["Checking your light — clear",700],
       ["Locating your face — "+photo.faceCells+" regions read",900],
       ["Balancing for your lighting",800],
-      ["Sampling skin, hair & eye zones",900],
-      ["Reading undertone — "+lean,1100],
-      ["Cross-checking your five answers",1000],
-      ["Depth index "+Math.round((1-photo.l)*100)+" · contrast "+Math.round(photo.contrast*100),1100],
-      ["Placing you on the three axes",1100],
-      ["Narrowing to your season family",1150],
-      ["Ruling out neighboring seasons",1300],
-      ["Composing your palette — "+shades+" shades",1200]
-    ];
+      ["Sampling skin across cheeks & forehead",950]];
+    if(photo.eyeName)seq.push(["Reading your iris — "+photo.eyeName,950]);
+    if(photo.lipHex)seq.push(["Sampling your lip undertone",850]);
+    if(photo.hairHex)seq.push(["Measuring hair depth against skin",900]);
+    seq.push(
+      ["Reading undertone — "+lean,1050],
+      ["Cross-checking your five answers",950],
+      ["Depth index "+Math.round((1-photo.l)*100)+" · contrast "+Math.round(photo.contrast*100),1050],
+      ["Narrowing to your season family",1050],
+      ["Ruling out neighboring seasons",1250],
+      ["Composing your palette — "+shades+" shades",1150]);
   }else{
     seq=quizSeq(shades);
   }
@@ -1578,7 +1720,7 @@ function runQuizOnly(){
   $('previewImg').style.display='none';$('previewImg').removeAttribute('src');
   document.querySelector('.ring').classList.add('noimg');
   show('analyzing');
-  lastInsight=null;
+  lastInsight=null;lastPhotoRead=null;
   const season=decideSeason(null);
   playSteps(quizSeq(shadeCountFor(season)),()=>{render(season);
     const ins=$('insight');ins.hidden=false;
@@ -1597,6 +1739,25 @@ function render(season){
   const parts=season.split(' ');
   $('chips').innerHTML=[parts[0], parts[1], /Spring|Autumn/.test(season)?'Warm undertone':'Cool undertone']
     .map(t=>`<span class="chip">${t}</span>`).join('');
+  /* the tones the engine measured — the receipt behind the verdict */
+  const mp=lastPhotoRead,mEl=$('measured');
+  if(mp&&mp.skinHex){
+    /* caption from the same vote the season decision used — the panel must
+       never contradict the chips */
+    const w=mp.warmSig;
+    let v=w>55?3:w>18?1.5:w<-20?-3:w<-6?-1.5:0;
+    if(mp.hue!=null)v+=mp.hue>63?2:mp.hue>58?1:mp.hue<44?-2:mp.hue<48?-1:0;
+    v+=mp.warmAux||0;
+    const toneWord=v>=1.2?'warm undertone':v<=-1.2?'cool undertone':'neutral undertone';
+    const hairWord=mp.hairL<.25?'deep':mp.hairL<.5?'medium':'light';
+    const sw=[['Skin',mp.skinHex,toneWord],
+              mp.hairHex?['Hair',mp.hairHex,hairWord+' depth']:null,
+              mp.eyeHex?['Eyes',mp.eyeHex,mp.eyeName]:null,
+              mp.lipHex?['Lips',mp.lipHex,'natural tone']:null].filter(Boolean);
+    $('measuredRow').innerHTML=sw.map(([t,h,cap])=>
+      `<div class="msw"><i style="background:${h}"></i><b>${t}</b><small>${cap}</small></div>`).join('');
+    mEl.hidden=false;
+  }else mEl.hidden=true;
   $('teaser').innerHTML=d.teaser.map(c=>`<div class="sw" style="background:${c}"><small>${c.toUpperCase()}</small></div>`).join('');
   if(isUnlocked)applyUnlocked(); else applyLocked();
   store.save();
@@ -1751,7 +1912,7 @@ async function shareResult(){
     else{if(navigator.clipboard)navigator.clipboard.writeText(text).catch(()=>{});toast('Copied — paste it anywhere to share.');}
   }
 }
-function reset(){$('file').value='';$('fileUp').value='';st.i=0;st.answers=[];st.warm=st.light=st.chroma=0;lastInsight=null;photoTries=0;document.documentElement.style.setProperty('--tint','#f7f2ef');show('intro');}
+function reset(){$('file').value='';$('fileUp').value='';st.i=0;st.answers=[];st.warm=st.light=st.chroma=0;lastInsight=null;lastPhotoRead=null;photoTries=0;document.documentElement.style.setProperty('--tint','#f7f2ef');show('intro');}
 
 buildDecks();
 
