@@ -877,7 +877,7 @@ const QUIZ = [
 ];
 
 const $=id=>document.getElementById(id);
-function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));$(id).classList.add('on');document.body.classList.toggle('flow',id!=='intro');window.scrollTo(0,0);}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));$(id).classList.add('on');document.body.classList.toggle('flow',id!=='intro');window.scrollTo(0,0);if(id==='capture')ensureCascade();}
 /* section anchors keep working from app screens — return to the landing first */
 document.addEventListener('click',e=>{
   const a=e.target.closest('a[href^="#"]');if(!a)return;
@@ -964,7 +964,7 @@ function paintDecks(upto){
     else{el.style.background='var(--line)';el.style.transform='scaleY(1)';}
   });
 }
-function startQuiz(){st.i=0;st.answers=[];st.warm=st.light=st.chroma=0;buildDecks();show('quiz');renderQ();}
+function startQuiz(){st.i=0;st.answers=[];st.warm=st.light=st.chroma=0;buildDecks();show('quiz');renderQ();ensureCascade();}
 function recompute(){st.warm=st.light=st.chroma=0;st.answers.forEach((ai,k)=>{if(ai==null)return;const e=QUIZ[k].opts[ai].e||{};st.warm+=e.warm||0;st.light+=e.light||0;st.chroma+=e.chroma||0;});}
 function renderQ(){
   const Q=QUIZ[st.i];
@@ -1013,6 +1013,232 @@ function quizBack(){
       (sampled just above the face box) blended with skin saturation.
    3. REFUSE gracefully: no face-sized region or unreadable light -> null,
       and the UI asks for one retake instead of guessing. */
+/* ---- real face detection: pico (MIT, github.com/nenadmarkus/picojs) ---- */
+/* This library is released under the MIT license, see https://github.com/nenadmarkus/picojs */
+pico = {}
+
+pico.unpack_cascade = function(bytes)
+{
+	//
+	const dview = new DataView(new ArrayBuffer(4));
+	/*
+		we skip the first 8 bytes of the cascade file
+		(cascade version number and some data used during the learning process)
+	*/
+	let p = 8;
+	/*
+		read the depth (size) of each tree first: a 32-bit signed integer
+	*/
+	dview.setUint8(0, bytes[p+0]), dview.setUint8(1, bytes[p+1]), dview.setUint8(2, bytes[p+2]), dview.setUint8(3, bytes[p+3]);
+	const tdepth = dview.getInt32(0, true);
+	p = p + 4
+	/*
+		next, read the number of trees in the cascade: another 32-bit signed integer
+	*/
+	dview.setUint8(0, bytes[p+0]), dview.setUint8(1, bytes[p+1]), dview.setUint8(2, bytes[p+2]), dview.setUint8(3, bytes[p+3]);
+	const ntrees = dview.getInt32(0, true);
+	p = p + 4
+	/*
+		read the actual trees and cascade thresholds
+	*/
+	const tcodes_ls = [];
+	const tpreds_ls = [];
+	const thresh_ls = [];
+	for(let t=0; t<ntrees; ++t)
+	{
+		// read the binary tests placed in internal tree nodes
+		Array.prototype.push.apply(tcodes_ls, [0, 0, 0, 0]);
+		Array.prototype.push.apply(tcodes_ls, bytes.slice(p, p+4*Math.pow(2, tdepth)-4));
+		p = p + 4*Math.pow(2, tdepth)-4;
+		// read the prediction in the leaf nodes of the tree
+		for(let i=0; i<Math.pow(2, tdepth); ++i)
+		{
+			dview.setUint8(0, bytes[p+0]), dview.setUint8(1, bytes[p+1]), dview.setUint8(2, bytes[p+2]), dview.setUint8(3, bytes[p+3]);
+			tpreds_ls.push(dview.getFloat32(0, true));
+			p = p + 4;
+		}
+		// read the threshold
+		dview.setUint8(0, bytes[p+0]), dview.setUint8(1, bytes[p+1]), dview.setUint8(2, bytes[p+2]), dview.setUint8(3, bytes[p+3]);
+		thresh_ls.push(dview.getFloat32(0, true));
+		p = p + 4;
+	}
+	const tcodes = new Int8Array(tcodes_ls);
+	const tpreds = new Float32Array(tpreds_ls);
+	const thresh = new Float32Array(thresh_ls);
+	/*
+		construct the classification function from the read data
+	*/
+	function classify_region(r, c, s, pixels, ldim)
+	{
+		 r = 256*r;
+		 c = 256*c;
+		 let root = 0;
+		 let o = 0.0;
+		 const pow2tdepth = Math.pow(2, tdepth) >> 0; // '>>0' transforms this number to int
+
+		 for(let i=0; i<ntrees; ++i)
+		 {
+			let idx = 1;
+			for(let j=0; j<tdepth; ++j)
+				// we use '>> 8' here to perform an integer division: this seems important for performance
+				idx = 2*idx + (pixels[((r+tcodes[root + 4*idx + 0]*s) >> 8)*ldim+((c+tcodes[root + 4*idx + 1]*s) >> 8)]<=pixels[((r+tcodes[root + 4*idx + 2]*s) >> 8)*ldim+((c+tcodes[root + 4*idx + 3]*s) >> 8)]);
+
+			 o = o + tpreds[pow2tdepth*i + idx-pow2tdepth];
+
+			 if(o<=thresh[i])
+				 return -1;
+
+			 root += 4*pow2tdepth;
+		}
+		return o - thresh[ntrees-1];
+	}
+	/*
+		we're done
+	*/
+	return classify_region;
+}
+
+pico.run_cascade = function(image, classify_region, params)
+{
+	const pixels = image.pixels;
+	const nrows = image.nrows;
+	const ncols = image.ncols;
+	const ldim = image.ldim;
+
+	const shiftfactor = params.shiftfactor;
+	const minsize = params.minsize;
+	const maxsize = params.maxsize;
+	const scalefactor = params.scalefactor;
+
+	let scale = minsize;
+	const detections = [];
+
+	while(scale<=maxsize)
+	{
+		const step = Math.max(shiftfactor*scale, 1) >> 0; // '>>0' transforms this number to int
+		const offset = (scale/2 + 1) >> 0;
+
+		for(let r=offset; r<=nrows-offset; r+=step)
+			for(let c=offset; c<=ncols-offset; c+=step)
+			{
+				const q = classify_region(r, c, scale, pixels, ldim);
+				if (q > 0.0)
+					detections.push([r, c, scale, q]);
+			}
+		
+		scale = scale*scalefactor;
+	}
+
+    return detections;
+}
+
+pico.cluster_detections = function(dets, iouthreshold)
+{
+	/*
+		sort detections by their score
+	*/
+	dets = dets.sort(function(a, b) {
+		return b[3] - a[3];
+	});
+	/*
+		this helper function calculates the intersection over union for two detections
+	*/
+	function calculate_iou(det1, det2)
+	{
+		// unpack the position and size of each detection
+		const r1=det1[0], c1=det1[1], s1=det1[2];
+		const r2=det2[0], c2=det2[1], s2=det2[2];
+		// calculate detection overlap in each dimension
+		const overr = Math.max(0, Math.min(r1+s1/2, r2+s2/2) - Math.max(r1-s1/2, r2-s2/2));
+		const overc = Math.max(0, Math.min(c1+s1/2, c2+s2/2) - Math.max(c1-s1/2, c2-s2/2));
+		// calculate and return IoU
+		return overr*overc/(s1*s1+s2*s2-overr*overc);
+	}
+	/*
+		do clustering through non-maximum suppression
+	*/
+	const assignments = new Array(dets.length).fill(0);
+	const clusters = [];
+	for(let i=0; i<dets.length; ++i)
+	{
+		// is this detection assigned to a cluster?
+		if(assignments[i]==0)
+		{
+			// it is not:
+			// now we make a cluster out of it and see whether some other detections belong to it
+			let r=0.0, c=0.0, s=0.0, q=0.0, n=0;
+			for(let j=i; j<dets.length; ++j)
+				if(calculate_iou(dets[i], dets[j])>iouthreshold)
+				{
+					assignments[j] = 1;
+					r = r + dets[j][0];
+					c = c + dets[j][1];
+					s = s + dets[j][2];
+					q = q + dets[j][3];
+					n = n + 1;
+				}
+			// make a cluster representative
+			clusters.push([r/n, c/n, s/n, q]);
+		}
+	}
+
+	return clusters;
+}
+
+pico.instantiate_detection_memory = function(size)
+{
+	/*
+		initialize a circular buffer of `size` elements
+	*/
+	let n = 0;
+	const memory = [];
+	for(let i=0; i<size; ++i)
+		memory.push([]);
+	/*
+		build a function that:
+		(1) inserts the current frame's detections into the buffer;
+		(2) merges all detections from the last `size` frames and returns them
+	*/
+	function update_memory(dets)
+	{
+		memory[n] = dets;
+		n = (n+1)%memory.length;
+		dets = [];
+		for(i=0; i<memory.length; ++i)
+			dets = dets.concat(memory[i]);
+		//
+		return dets;
+	}
+	/*
+		we're done
+	*/
+	return update_memory;
+}
+/* cascade is ~234KB — fetched lazily when the user starts the quiz, never on landing */
+let faceClassify=null,cascadeP=null;
+function ensureCascade(){
+  if(!cascadeP)cascadeP=fetch('assets/facefinder.bin')
+    .then(r=>{if(!r.ok)throw new Error('http '+r.status);return r.arrayBuffer();})
+    .then(b=>{faceClassify=pico.unpack_cascade(new Int8Array(b));})
+    .catch(()=>{cascadeP=null;});
+  return cascadeP;
+}
+const FACE_Q=10; /* min clustered detection score — tuned on portrait/non-face suite */
+function detectFace(img){
+  const D=400,c2=document.createElement('canvas');c2.width=D;c2.height=D;
+  const cx2=c2.getContext('2d',{willReadFrequently:true});
+  const iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height;
+  const side=Math.min(iw,ih),sx=(iw-side)/2,sy=(ih-side)*.35;
+  cx2.drawImage(img,sx,sy,side,side,0,0,D,D);
+  const rgba=cx2.getImageData(0,0,D,D).data,gray=new Uint8Array(D*D);
+  for(let i=0;i<D*D;i++)gray[i]=(2*rgba[4*i]+7*rgba[4*i+1]+rgba[4*i+2])/10;
+  let dets=pico.run_cascade({pixels:gray,nrows:D,ncols:D,ldim:D},faceClassify,
+    {shiftfactor:.1,minsize:Math.round(D*.15),maxsize:D,scalefactor:1.1});
+  dets=pico.cluster_detections(dets,.2).filter(dt=>dt[3]>=FACE_Q);
+  if(!dets.length)return null;
+  dets.sort((a,b)=>b[3]-a[3]);
+  return {r:dets[0][0],c:dets[0][1],s:dets[0][2],q:dets[0][3],D:D};
+}
 function analyzePhoto(img){
   const cv=$('cv'),ctx=cv.getContext('2d'),S=260;
   /* center-square crop, biased toward the top — never stretch a portrait selfie */
@@ -1021,6 +1247,20 @@ function analyzePhoto(img){
   ctx.drawImage(img,sx,sy,side,side,0,0,S,S);
   const d=ctx.getImageData(0,0,S,S).data;
   const G=26,C=S/G;
+  /* the REAL face gate: when the pico cascade is loaded, an actual detected
+     face is required — skin-toned texture (wood, sand, fur, food) no longer
+     passes. If the cascade failed to load, the heuristics below still stand. */
+  const face=faceClassify?detectFace(img):undefined;
+  if(faceClassify&&!face)return {fail:'noface'};
+  let mask=null,maskN=0;
+  if(face){
+    const fx=face.c/face.D*S,fy=face.r/face.D*S,fr=face.s/face.D*S*.62;
+    mask=new Uint8Array(G*G);
+    for(let gy=0;gy<G;gy++)for(let gx=0;gx<G;gx++){
+      const dx=(gx+.5)*C-fx,dy=(gy+.5)*C-fy;
+      if(dx*dx+dy*dy<=fr*fr){mask[gy*G+gx]=1;maskN++;}
+    }
+  }
   const isSkin=(r,g,b)=>{
     const y=.299*r+.587*g+.114*b;
     const cb=128-.168736*r-.331264*g+.5*b;
@@ -1045,7 +1285,7 @@ function analyzePhoto(img){
   if(sceneBright/sceneN>.30)return {fail:'blown'};
   /* a skin cell must also have texture — beige walls are skin-chromatic but FLAT,
      faces are not (features, shading). var>=6 keeps cheeks, rejects painted walls. */
-  const okCell=c=>grid[c]>=.4&&vGrid[c]>=6;
+  const okCell=c=>grid[c]>=.4&&vGrid[c]>=6&&(!mask||mask[c]);
   const seen=new Uint8Array(G*G);let best=null;
   for(let s0=0;s0<G*G;s0++){
     if(seen[s0]||!okCell(s0))continue;
@@ -1062,7 +1302,10 @@ function analyzePhoto(img){
     }
     if(!best||cells.length>best.length)best=cells;
   }
-  if(!best||best.length<Math.round(G*G*.055))return {fail:'noface'};
+  /* with a confirmed face, the skin blob only needs to fill part of the face
+     circle (glasses/beards shrink it); without one, the old absolute bar holds */
+  const minBlob=face?Math.max(10,Math.round(maskN*.18)):Math.round(G*G*.055);
+  if(!best||best.length<minBlob)return {fail:'noface'};
   const inComp=new Uint8Array(G*G);for(const c of best)inComp[c]=1;
   let x0=G,x1=0,y0=G,y1=0;
   for(const c of best){const cy0=(c/G)|0,cx0=c%G;if(cx0<x0)x0=cx0;if(cx0>x1)x1=cx0;if(cy0<y0)y0=cy0;if(cy0>y1)y1=cy0;}
@@ -1071,7 +1314,7 @@ function analyzePhoto(img){
      must never read as "tinted light" */
   let bgR=0,bgG=0,bgB=0,bgN=0;
   for(let c=0;c<G*G;c++){
-    if(inComp[c]||((c/G)|0)>y1)continue;
+    if(inComp[c]||(mask&&mask[c])||((c/G)|0)>y1)continue;
     const gy=(c/G)|0,gx=c%G;
     for(let y=gy*C;y<(gy+1)*C;y+=4)for(let x=gx*C;x<(gx+1)*C;x+=4){
       const i=((y|0)*S+(x|0))*4,r=d[i],g=d[i+1],b=d[i+2];
@@ -1080,9 +1323,13 @@ function analyzePhoto(img){
     }
   }
   /* severe color cast: undertone can't be trusted under heavily tinted light */
+  /* a pico-confirmed face relaxes the cast gate: von Kries handles moderate
+     warm interiors, and face-anchored sampling no longer mistakes a warm
+     backdrop for the skin itself. Heavy tints still refuse. */
   if(bgN>500){
     const rm=bgR/bgN,gm=bgG/bgN,bm=bgB/bgN;
-    if(Math.abs(rm-bm)>62||Math.abs(gm-(rm+bm)/2)>45)return {fail:'cast'};
+    const castR=face?80:62,castG=face?58:45;
+    if(Math.abs(rm-bm)>castR||Math.abs(gm-(rm+bm)/2)>castG)return {fail:'cast'};
   }
   /* median skin color — robust to specular highlights and stray shadows */
   const rs=[],gs=[],bs=[];let blown=0;
@@ -1230,7 +1477,10 @@ const REJECT_MSG={
   blown:"That light is washing you out — step back from direct light and try again.",
   cast:"That light is heavily tinted — it would skew your colors. Daylight near a window reads truest."
 };
-function run(img){
+async function run(img){
+  /* the cascade is normally prefetched at quiz start; give a late fetch a
+     moment, then analyze — heuristics-only if it truly isn't there */
+  try{await Promise.race([ensureCascade(),new Promise(r=>setTimeout(r,3500))]);}catch(e){}
   let photo=null;try{photo=analyzePhoto(img);}catch(err){photo=null;}
   const reason=photo&&photo.fail;
   if(reason)photo=null;
