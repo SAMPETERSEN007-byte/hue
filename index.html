@@ -1749,9 +1749,9 @@ function render(season){
     if(mp.hue!=null)v+=mp.hue>63?2:mp.hue>58?1:mp.hue<44?-2:mp.hue<48?-1:0;
     v+=mp.warmAux||0;
     const toneWord=v>=1.2?'warm undertone':v<=-1.2?'cool undertone':'neutral undertone';
-    const hairWord=mp.hairL<.25?'deep':mp.hairL<.5?'medium':'light';
+    const hairWord=mp.hairL<.25?'deep':mp.hairL<.5?'medium depth':'light';
     const sw=[['Skin',mp.skinHex,toneWord],
-              mp.hairHex?['Hair',mp.hairHex,hairWord+' depth']:null,
+              mp.hairHex?['Hair',mp.hairHex,hairWord]:null,
               mp.eyeHex?['Eyes',mp.eyeHex,mp.eyeName]:null,
               mp.lipHex?['Lips',mp.lipHex,'natural tone']:null].filter(Boolean);
     $('measuredRow').innerHTML=sw.map(([t,h,cap])=>
