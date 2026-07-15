@@ -71,7 +71,7 @@
   <p>If you buy the report, the checkout URL carries a one-word source tag (like "tt" or "friend") and your season name (like "deep-autumn"), so Stripe can show us which link brought the purchase. It never contains anything that identifies you.</p>
 
   <h2 class="serif">Anonymous usage analytics</h2>
-  <p>We use <b>PostHog</b>, a product analytics service, in cookieless mode to count how HUE is used — pageviews and steps like "quiz started," "selfie analyzed," or "checkout clicked." It runs with no cookies and no stored identifier: nothing persists on your device, so separate visits can't be linked to each other, let alone to you. The analytics see <i>that</i> a selfie was analyzed — never the selfie, never your answers, never your palette. Events are received by PostHog (<a href="https://posthog.com/privacy" rel="noopener">PostHog's privacy policy</a>) on our behalf.</p>
+  <p>We use <b>PostHog</b>, a product analytics service, in cookieless mode to count how HUE is used — pageviews and steps like "quiz started," "selfie analyzed," or "checkout clicked." It runs with no cookies and no stored identifier: nothing persists on your device, so separate visits can't be linked to each other, let alone to you. The analytics see <i>that</i> a selfie was analyzed, and which season the analysis landed on — never the selfie, never the tones it measured, never your individual answers. Events are received by PostHog (<a href="https://posthog.com/privacy" rel="noopener">PostHog's privacy policy</a>) on our behalf.</p>
 
   <h2 class="serif">What we don't do</h2>
   <ul>
@@ -85,6 +85,7 @@
   <ul>
     <li><b>GitHub Pages</b> hosts this site (<a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener">GitHub's privacy statement</a>).</li>
     <li><b>Stripe</b> handles checkout, as described above.</li>
+    <li><b>Resend</b> sends your report email after a purchase — it receives the address you gave Stripe at checkout and your season's report content (<a href="https://resend.com/legal/privacy-policy" rel="noopener">Resend's privacy policy</a>). The hand-off runs through a small function of ours hosted on Cloudflare; it stores nothing.</li>
     <li><b>PostHog</b> receives the anonymous, cookieless usage events described above.</li>
   </ul>
 
