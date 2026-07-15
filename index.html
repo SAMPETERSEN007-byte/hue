@@ -1237,22 +1237,35 @@ function ensureCascade(){
 }
 const FACE_Q=10; /* min clustered detection score — tuned on portrait/non-face suite */
 function detectFace(img){
+  /* pico is rotation-sensitive: upright first, then a +-15 degree retry —
+     selfie head-tilt is common. On a rotated hit, features sample in the
+     rotated (face-upright) buffer where the canonical boxes are true, and
+     the circle center is mapped back for the 260px canvas mask. */
   const D=400,c2=document.createElement('canvas');c2.width=D;c2.height=D;
   const cx2=c2.getContext('2d',{willReadFrequently:true});
   const iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height;
   const side=Math.min(iw,ih),sx=(iw-side)/2,sy=(ih-side)*.35;
-  cx2.drawImage(img,sx,sy,side,side,0,0,D,D);
-  const rgba=cx2.getImageData(0,0,D,D).data,gray=new Uint8Array(D*D);
-  for(let i=0;i<D*D;i++)gray[i]=(2*rgba[4*i]+7*rgba[4*i+1]+rgba[4*i+2])/10;
-  let dets=pico.run_cascade({pixels:gray,nrows:D,ncols:D,ldim:D},faceClassify,
-    {shiftfactor:.1,minsize:Math.round(D*.15),maxsize:D,scalefactor:1.1});
-  dets=pico.cluster_detections(dets,.2).filter(dt=>dt[3]>=FACE_Q);
-  if(!dets.length)return null;
-  dets.sort((a,b)=>b[3]-a[3]);
-  /* the rgba buffer rides along: features (iris, lips, patches) sample at
-     this resolution — on a half-body shot the 260px canvas leaves a ~5px
-     iris, far too coarse to read */
-  return {r:dets[0][0],c:dets[0][1],s:dets[0][2],q:dets[0][3],D:D,rgba:rgba};
+  for(const deg of [0,15,-15]){
+    const a=deg*Math.PI/180;
+    cx2.save();
+    cx2.fillStyle='#808080';cx2.fillRect(0,0,D,D);
+    cx2.translate(D/2,D/2);cx2.rotate(a);cx2.translate(-D/2,-D/2);
+    cx2.drawImage(img,sx,sy,side,side,0,0,D,D);
+    cx2.restore();
+    const rgba=cx2.getImageData(0,0,D,D).data,gray=new Uint8Array(D*D);
+    for(let i=0;i<D*D;i++)gray[i]=(2*rgba[4*i]+7*rgba[4*i+1]+rgba[4*i+2])/10;
+    let dets=pico.run_cascade({pixels:gray,nrows:D,ncols:D,ldim:D},faceClassify,
+      {shiftfactor:.1,minsize:Math.round(D*.15),maxsize:D,scalefactor:1.1});
+    dets=pico.cluster_detections(dets,.2).filter(dt=>dt[3]>=FACE_Q);
+    if(!dets.length)continue;
+    dets.sort((p,q)=>q[3]-p[3]);
+    const [r,c,s,q]=dets[0];
+    /* map the center back through the inverse rotation for the mask */
+    const dx=c-D/2,dy=r-D/2,ca=Math.cos(-a),sa=Math.sin(-a);
+    return {r:r,c:c,s:s,q:q,D:D,rgba:rgba,
+      mr:D/2+sa*dx+ca*dy, mc:D/2+ca*dx-sa*dy};
+  }
+  return null;
 }
 function analyzePhoto(img){
   const cv=$('cv'),ctx=cv.getContext('2d'),S=260;
@@ -1269,7 +1282,9 @@ function analyzePhoto(img){
   if(faceClassify&&!face)return {fail:'noface'};
   let mask=null,maskN=0;
   if(face){
-    const fx=face.c/face.D*S,fy=face.r/face.D*S,fr=face.s/face.D*S*.62;
+    const fx=(face.mc!=null?face.mc:face.c)/face.D*S,
+          fy=(face.mr!=null?face.mr:face.r)/face.D*S,
+          fr=face.s/face.D*S*.62;
     mask=new Uint8Array(G*G);
     for(let gy=0;gy<G;gy++)for(let gx=0;gx<G;gx++){
       const dx=(gx+.5)*C-fx,dy=(gy+.5)*C-fy;
@@ -1283,21 +1298,26 @@ function analyzePhoto(img){
     return y>38&&y<246&&cb>=77&&cb<=127&&cr>=133&&cr<=177;
   };
   const grid=new Float32Array(G*G),vGrid=new Float32Array(G*G);
-  let sceneSum=0,sceneN=0,sceneBright=0;
+  let sceneSum=0,sceneSum2=0,sceneN=0,sceneBright=0;
   for(let gy=0;gy<G;gy++)for(let gx=0;gx<G;gx++){
     let n=0,t=0,sy=0,sy2=0;
     for(let y=gy*C;y<(gy+1)*C;y+=2)for(let x=gx*C;x<(gx+1)*C;x+=2){
       const i=((y|0)*S+(x|0))*4,r=d[i],g=d[i+1],b=d[i+2];t++;
       if(isSkin(r,g,b))n++;
       const ly=.299*r+.587*g+.114*b;sy+=ly;sy2+=ly*ly;
-      sceneSum+=ly;sceneN++;if(ly>250)sceneBright++;
+      sceneSum+=ly;sceneSum2+=ly*ly;sceneN++;if(ly>250)sceneBright++;
     }
     grid[gy*G+gx]=n/t;
     vGrid[gy*G+gx]=sy2/t-(sy/t)*(sy/t);
   }
   /* scene-level light gates: refuse what can't be read honestly */
-  if(sceneSum/sceneN<42)return {fail:'dark'};
+  const sceneMean=sceneSum/sceneN;
+  if(sceneMean<42)return {fail:'dark'};
   if(sceneBright/sceneN>.30)return {fail:'blown'};
+  /* overexposure that never clips: a bright scene with crushed contrast —
+     the histogram is squeezed against the top, the undertone is bleached */
+  const sceneStd=Math.sqrt(Math.max(0,sceneSum2/sceneN-sceneMean*sceneMean));
+  if((sceneMean>190&&sceneStd<30)||(sceneMean>205&&sceneStd<34))return {fail:'blown'};
   /* a skin cell must also have texture — beige walls are skin-chromatic but FLAT,
      faces are not (features, shading). var>=6 keeps cheeks, rejects painted walls. */
   const okCell=c=>grid[c]>=.4&&vGrid[c]>=6&&(!mask||mask[c]);
@@ -1319,8 +1339,10 @@ function analyzePhoto(img){
   }
   /* with a confirmed face, the skin blob only needs to fill part of the face
      circle (glasses/beards shrink it); without one, the old absolute bar holds */
+  /* a found face whose skin won't classify means unreadable LIGHT, not a
+     missing face — say so, or the retake advice misleads */
   const minBlob=face?Math.max(10,Math.round(maskN*.18)):Math.round(G*G*.055);
-  if(!best||best.length<minBlob)return {fail:'noface'};
+  if(!best||best.length<minBlob)return {fail:face?'cast':'noface'};
   const inComp=new Uint8Array(G*G);for(const c of best)inComp[c]=1;
   let x0=G,x1=0,y0=G,y1=0;
   for(const c of best){const cy0=(c/G)|0,cx0=c%G;if(cx0<x0)x0=cx0;if(cx0>x1)x1=cx0;if(cy0<y0)y0=cy0;if(cy0>y1)y1=cy0;}
@@ -1381,7 +1403,7 @@ function analyzePhoto(img){
     }
   }
   const n=rsAll.length;
-  if(n<60)return {fail:'noface'};
+  if(n<60)return {fail:face?'cast':'noface'};
   if(blown/n>.22)return {fail:'blown'};
   /* SKIN — two cheeks + forehead, skin-classified pixels only; the median of
      each usable patch, averaged. Beard or bangs simply drop their patch. */
@@ -1461,7 +1483,6 @@ function analyzePhoto(img){
   const voteHue=vC>8?Math.atan2(vBst,vA)*180/Math.PI:null;
   const [,satRaw,lSkin]=rgb2hsl(R,Gc,B);
   if(lSkin<.13)return {fail:'dark'};
-  /* eye reading: LAB hue + chroma name the iris; low chroma is gray/deep */
   let eyeName=null,eyeC=0,eyeHue=0,lEye=null;
   if(eyeRGB){
     const [eL,ea,eb]=rgb2lab(eyeRGB[0],eyeRGB[1],eyeRGB[2]);
