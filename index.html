@@ -25,8 +25,8 @@
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/bodoni-moda-var.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/bodoni-moda-var-italic.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/general-sans-400.woff2" crossorigin>
-<link rel="preload" as="image" href="assets/hero-after.webp" type="image/webp" fetchpriority="high">
-<link rel="preload" as="image" href="assets/hero-before.webp" type="image/webp" fetchpriority="high">
+<link rel="preload" as="image" href="assets/gal-autumn-after.webp" type="image/webp" fetchpriority="high">
+<link rel="preload" as="image" href="assets/gal-autumn-before.webp" type="image/webp" fetchpriority="high">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"Product","name":"HUE Full Color Report","description":"Your complete 12-season personal color analysis: 30+ named shades, six colors to retire, makeup formula, hair direction, and a wardrobe system.","url":"https://huebloom.app/","image":"https://huebloom.app/og.png","brand":{"@type":"Brand","name":"HUE"},"offers":{"@type":"Offer","price":"9.00","priceCurrency":"USD","availability":"https://schema.org/InStock","url":"https://huebloom.app/"}}
 </script>
@@ -490,10 +490,10 @@ posthog.init(window.HUE_PH_KEY,{api_host:window.HUE_PH_HOST,defaults:'2026-05-30
       <div>
         <div class="mirror-wrap">
           <div class="mirror" id="mirror" role="slider" tabindex="0" aria-label="Compare the wrong colors with her colors" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
-            <picture><source srcset="assets/hero-after.webp" type="image/webp"><img src="assets/hero-after.jpg" alt="Woman draped in her season's rich rust, olive and teal, glowing" draggable="false" fetchpriority="high" decoding="async" /></picture>
-            <div class="before-pane"><picture><source srcset="assets/hero-before.webp" type="image/webp"><img src="assets/hero-before.jpg" alt="The same woman in icy cool colors that fight her warmth" draggable="false" fetchpriority="high" decoding="async" /></picture></div>
+            <picture><source srcset="assets/gal-autumn-after.webp" type="image/webp"><img src="assets/gal-autumn-after.jpg" alt="Woman glowing in her Deep Autumn colors — rich rust, gold and olive silk" draggable="false" fetchpriority="high" decoding="async" /></picture>
+            <div class="before-pane"><picture><source srcset="assets/gal-autumn-before.webp" type="image/webp"><img src="assets/gal-autumn-before.jpg" alt="The same woman muted by icy blue satin that fights her warmth" draggable="false" fetchpriority="high" decoding="async" /></picture></div>
             <span class="m-label m-label-l">the wrong colors</span>
-            <div class="m-chip" id="mChip"><b>True Autumn</b></div>
+            <div class="m-chip" id="mChip"><b>Deep Autumn</b></div>
             <div class="m-divider"><span class="m-handle">drag</span></div>
           </div>
           <p class="m-caption">Same face, same light. <em>Only the colors changed.</em></p>
@@ -511,13 +511,13 @@ posthog.init(window.HUE_PH_KEY,{api_host:window.HUE_PH_HOST,defaults:'2026-05-30
       </div>
       <div class="gal-row">
         <figure class="gal-card">
-          <div class="mirror" data-season="Deep Autumn" role="slider" tabindex="0" aria-label="Compare icy colors with her Deep Autumn colors" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
-            <picture><source srcset="assets/gal-autumn-after.webp" type="image/webp"><img src="assets/gal-autumn-after.jpg" alt="Woman glowing in her Deep Autumn colors" draggable="false" loading="lazy" /></picture>
-            <div class="before-pane"><picture><source srcset="assets/gal-autumn-before.webp" type="image/webp"><img src="assets/gal-autumn-before.jpg" alt="The same woman drained by icy cool colors" draggable="false" loading="lazy" /></picture></div>
+          <div class="mirror" data-season="True Autumn" role="slider" tabindex="0" aria-label="Compare icy colors with her True Autumn colors" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+            <picture><source srcset="assets/hero-after.webp" type="image/webp"><img src="assets/hero-after.jpg" alt="Woman glowing in her True Autumn rust, olive and teal" draggable="false" loading="lazy" /></picture>
+            <div class="before-pane"><picture><source srcset="assets/hero-before.webp" type="image/webp"><img src="assets/hero-before.jpg" alt="The same woman in icy blue satin that fights her warmth" draggable="false" loading="lazy" /></picture></div>
             <div class="m-chip"></div>
             <div class="m-divider"><span class="m-handle">drag</span></div>
           </div>
-          <figcaption>Icy grey washed her out.<br><em>Deep Autumn</em> brought her back.</figcaption>
+          <figcaption>Icy blue washed her out.<br><em>True Autumn</em> brought her back.</figcaption>
         </figure>
         <figure class="gal-card">
           <div class="mirror" data-season="True Spring" role="slider" tabindex="0" aria-label="Compare dusty colors with her True Spring colors" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
@@ -950,7 +950,7 @@ function initMirror(m,opts){
     if(e.key==='ArrowRight'){m._touched=true;set(cut+4);e.preventDefault();}
   });
 }
-initMirror($('mirror'),{glide:true,season:'True Autumn'});
+initMirror($('mirror'),{glide:true,season:'Deep Autumn'});
 document.querySelectorAll('#gallery .mirror').forEach(el=>initMirror(el,{season:el.dataset.season}));
 
 /* proof cards — REAL people + REAL quotes only. Section stays hidden while empty.
@@ -1284,6 +1284,10 @@ function analyzePhoto(img){
   const cv=$('cv'),ctx=cv.getContext('2d'),S=260;
   /* center-square crop, biased toward the top — never stretch a portrait selfie */
   const iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height;
+  /* below the 260px feature canvas every "pixel" would be invented by
+     upscaling — refuse rather than issue a confident season from fabricated
+     color data (thumbnails, chat-compressed re-saves) */
+  if(Math.min(iw,ih)<S)return {fail:'small'};
   const side=Math.min(iw,ih),sx=(iw-side)/2,sy=(ih-side)*.35;
   ctx.drawImage(img,sx,sy,side,side,0,0,S,S);
   const d=ctx.getImageData(0,0,S,S).data;
@@ -1314,6 +1318,12 @@ function analyzePhoto(img){
   const sceneMean=sceneSum/sceneN;
   if(sceneMean<56)return {fail:'dark'};
   const sceneStd=Math.sqrt(Math.max(0,sceneSum2/sceneN-sceneMean*sceneMean));
+  /* a (near-)monochrome photo has no undertone to read — say that honestly
+     instead of falling through to skin-classification and blaming the light */
+  if(sceneMidN>50){
+    const mR=sceneR/sceneMidN,mG=sceneG/sceneMidN,mB=sceneB/sceneMidN;
+    if(Math.abs(mR-mB)<4&&Math.abs(mR-mG)<4&&Math.abs(mG-mB)<4)return {fail:'gray'};
+  }
   if(!faceClassify){
     /* heuristics-only fallback (cascade unavailable) keeps whole-scene gates */
     if(sceneBright/sceneN>.30)return {fail:'blown'};
@@ -1774,7 +1784,9 @@ const REJECT_MSG={
   noface:"We couldn't find your face — fill more of the frame and try again.",
   dark:"Too dim to read your true coloring — face a window and try once more.",
   blown:"That light is washing you out — step back from direct light and try again.",
-  cast:"That light is heavily tinted — it would skew your colors. Daylight near a window reads truest."
+  cast:"That light is heavily tinted — it would skew your colors. Daylight near a window reads truest.",
+  gray:"That photo reads black-and-white — color is what we measure. A normal color photo will do it.",
+  small:"That photo's too small to read truly — a larger one, or a fresh selfie, will do it."
 };
 function centerPreviewOnFace(img,face){
   /* the detected face box → a face-centered square crop, so the analyzing
@@ -2128,7 +2140,7 @@ buildDecks();
   const viaParam=p.get('via');
   channel=(viaParam&&/^[a-z0-9_-]{1,20}$/i.test(viaParam))?viaParam.toLowerCase():((saved&&saved.via)||null);
   if(fromStripe||viaParam||p.get('start'))history.replaceState(null,'',location.pathname);
-  if(fromStripe)track('purchase_completed');
+  if(fromStripe)track('purchase_completed',{via:channel||'direct',season:(saved&&saved.season)||null});
   if(fromStripe||(saved&&saved.unlocked))isUnlocked=true;
   if(saved&&saved.read&&saved.read.skinHex)lastPhotoRead=saved.read;
   if(isUnlocked){
