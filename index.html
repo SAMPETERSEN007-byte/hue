@@ -1723,17 +1723,9 @@ function decideSeason(photo){
    checkout() appends ?client_reference_id=<channel>_<season>_px<price> for per-sale
    attribution. 50/50 price test, sticky per device; each arm's link carries a
    distinct price id, so every charge also self-reports its arm inside Stripe. */
-const PAYMENT_LINKS={19:"https://buy.stripe.com/6oUcN54O92lSfVUbK3gYU01",29:"https://buy.stripe.com/4gMcN5fsNd0w254eWfgYU02"};
-let px=(function(){try{const s=JSON.parse(localStorage.getItem('hue')||'null');if(s&&PAYMENT_LINKS[s.px])return s.px}catch(e){}return Math.random()<.5?19:29})();
-if(px!==19){
-  /* the page is authored at $19; rewrite the visible price surfaces for this arm
-     (inline handlers are attributes, so innerHTML re-parse preserves them) */
-  document.querySelectorAll('#report-band h2.serif, #report-band .rb-terms, #faq, #payBlock, .foot-tag, #lockwrap').forEach(n=>{
-    n.innerHTML=n.innerHTML.replace(/\$19\b/g,'$'+px).replace(/nineteen dollars/g,'twenty-nine dollars');
-  });
-  const lw=document.getElementById('lockwrap');
-  if(lw)lw.setAttribute('aria-label','Unlock your full report — $'+px);
-}
+const PAYMENT_LINKS={19:"https://buy.stripe.com/6oUcN54O92lSfVUbK3gYU01"};
+/* single price so creators and ads can name it in-script */
+let px=19;
 const SITE_URL="https://huebloom.app/";
 
 /* Paid report content, one entry per season — injected at build time. */
