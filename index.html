@@ -28,7 +28,7 @@
 <link rel="preload" as="image" href="assets/gal-autumn-after.webp" type="image/webp" fetchpriority="high">
 <link rel="preload" as="image" href="assets/gal-autumn-before.webp" type="image/webp" fetchpriority="high">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"Product","name":"HUE Full Color Report","description":"Your complete 12-season personal color analysis: 30+ named shades, six colors to retire, makeup formula, hair direction, and a wardrobe system.","url":"https://huebloom.app/","image":"https://huebloom.app/og.png","brand":{"@type":"Brand","name":"HUE"},"offers":{"@type":"Offer","price":"19.00","priceCurrency":"USD","availability":"https://schema.org/InStock","url":"https://huebloom.app/"}}
+{"@context":"https://schema.org","@type":"Product","name":"HUE Full Color Report","description":"Your complete 12-season personal color analysis: 30+ named shades, six colors to retire, makeup formula, hair direction, and a wardrobe system.","url":"https://huebloom.app/","image":"https://huebloom.app/og.png","brand":{"@type":"Brand","name":"HUE"},"offers":{"@type":"Offer","price":"29.99","priceCurrency":"USD","availability":"https://schema.org/InStock","url":"https://huebloom.app/"}}
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
@@ -292,6 +292,36 @@
   .report-card h4{font-family:"Bodoni Moda";font-weight:500;font-size:24px;margin:4px 0 4px}
   .report-card .rc-sub{color:var(--soft);font-size:14px;margin-bottom:18px}
   .report-card p{font-size:14.5px;line-height:1.6;margin:0 0 10px}
+  /* ---- palette compacts: pressed pans in the lacquer case ---- */
+  .compact .cpt-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .compact .rc-sub{margin-bottom:0}
+  .cpt-eyebrow{font-size:10px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);margin-bottom:7px}
+  .cpt-stamp{font-size:9px;font-weight:600;letter-spacing:.34em;color:var(--soft);opacity:.65;padding-top:4px}
+  .pantray{position:relative;background:var(--porcelain);border:1px solid var(--line);border-radius:var(--r);padding:16px 16px 14px;margin-top:14px}
+  .tray-label{display:flex;align-items:center;gap:10px;font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--soft-strong);margin:0 0 12px;white-space:nowrap}
+  .tray-label:after{content:"";flex:1;height:1px;background:var(--line);min-width:20px}
+  .tray-label em{font-style:normal;color:var(--soft);font-weight:500;letter-spacing:.05em;text-transform:none;white-space:normal}
+  .pans{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:14px 10px}
+  .pans.round{display:flex;flex-wrap:wrap;gap:14px 20px}
+  .pans.round .pan-cell{width:64px;flex:0 0 auto}
+  .pans.round .pan{width:64px;height:64px;aspect-ratio:auto}
+  .pan-cell{text-align:center;min-width:0}
+  .pan{aspect-ratio:1;border-radius:9px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.32),inset 0 2px 5px rgba(43,33,41,.16),0 1px 0 rgba(255,255,255,.65);outline:1px solid rgba(43,33,41,.07)}
+  .pans.round .pan{border-radius:50%}
+  .pan-cell b{display:block;font-size:8.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--soft-strong);margin-top:7px;line-height:1.35}
+  .counter-note{border-left:2px solid var(--accent);background:#fbf3f1;padding:12px 15px;margin-top:14px;font-size:13.5px;line-height:1.6}
+  .counter-note b{display:block;font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+  .eye-note{font-family:"Bodoni Moda",Georgia,serif;font-style:italic;font-size:15.5px;line-height:1.55;margin:2px 2px 0}
+  .compact-lock{cursor:pointer}
+  .compact-lock:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .frost .pans{filter:blur(5px) saturate(.92);opacity:.9}
+  .frost .pan-cell b{filter:blur(3px);opacity:.7}
+  .frost .tray-label{opacity:.45}
+  .frost-veil{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;text-align:center;padding:16px;background:linear-gradient(rgba(247,242,239,.38),rgba(247,242,239,.72))}
+  .frost-veil b{font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase}
+  .frost-veil span{font-size:12.5px;color:var(--soft-strong);max-width:320px;line-height:1.5}
+  .frost-veil em{font-style:normal;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-top:3px}
+  @media (max-width:480px){.pans{grid-template-columns:repeat(auto-fill,minmax(52px,1fr))}.pans.round{gap:12px 14px}.pans.round .pan-cell{width:56px}.pans.round .pan{width:56px;height:56px}}
   .report-card p b{font-weight:600}
   .avoid-row{display:flex;gap:14px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
   .avoid-row:last-child{border-bottom:0}
@@ -749,7 +779,7 @@ posthog.init(window.HUE_PH_KEY,{api_host:window.HUE_PH_HOST,defaults:'2026-05-30
           <div class="lockover">
             <div class="key"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg></div>
             <b id="lockTitle">Your full report is ready</b>
-            <span>30+ named shades, the six colors to retire, and your makeup, hair &amp; wardrobe formulas.</span>
+            <span>Your makeup formula — lips, blush, eyes, the foundation ask — plus 30+ named shades, the colors to retire, and hair &amp; wardrobe.</span>
             <em class="lock-cta">Unlock — $29.99</em>
           </div>
         </div>
@@ -847,10 +877,10 @@ const SEASONS = {
   "Soft Autumn":{band:["#c79a52","#a98f5f","#9f8f5f","#c98f6f","#8f9f6f"],desc:"Warm and muted — soft, earthy gold, olive and terracotta wrap you in a glow.",tint:"#f7f1e6",
     teaser:["#c79a52","#a98f5f","#9f8f5f","#c98f6f","#8f9f6f","#cdb88a"],
     full:["#c79a52","#caa24a","#b8915f","#a98f5f","#9f8f5f","#8f9f6f","#7f8f5f","#c98f6f","#b97f5f","#a96f4f","#cdb88a","#9f8f7f"]},
-  "True Autumn":{band:["#c2702c","#d99a2b","#7f8f3a","#a3502a","#6f7f2f"],desc:"Warm and rich — golden, spicy rust, olive and mustard are unmistakably yours.",tint:"#f6eee0",
+  "True Autumn":{band:["#bf4322","#d99a2b","#6f7f2f","#1f5f5b","#f2e3c4"],desc:"Warm and rich — golden, spicy rust, olive and mustard are unmistakably yours.",tint:"#f6eee0",
     teaser:["#c2702c","#d99a2b","#7f8f3a","#a3502a","#6f7f2f","#bf8f3f"],
     full:["#c2702c","#a3502a","#d99a2b","#e0b13c","#7f8f3a","#6f7f2f","#8f5a1f","#a35f2a","#bf8f3f","#7a4f2a","#9f6f2f","#c98f4f"]},
-  "Deep Autumn":{band:["#8a3b2e","#a35a2a","#c79a3c","#3f5f3a","#6f3f2f"],desc:"Warm and deep — rich chocolate, forest green, brick and gold are your signature.",tint:"#f4ece2",
+  "Deep Autumn":{band:["#8a3b2e","#c79a3c","#2f4f3a","#204b52","#e9dcbd"],desc:"Warm and deep — rich chocolate, forest green, brick and gold are your signature.",tint:"#f4ece2",
     teaser:["#8a3b2e","#a35a2a","#c79a3c","#3f5f3a","#6f3f2f","#7f4f2a"],
     full:["#8a3b2e","#6f2f22","#a35a2a","#bf7a2f","#c79a3c","#3f5f3a","#2f4f3a","#5f6f2f","#6f3f2f","#7f4f2a","#4f3f2a","#9f6f3f"]},
   "Deep Winter":{band:["#2f2f5f","#7a1f4f","#1f5f5a","#3a2f6f","#a3203f"],desc:"Cool and deep — bold jewel tones: pine, navy, magenta and true red are your power.",tint:"#eeecf4",
@@ -1723,9 +1753,10 @@ function decideSeason(photo){
    checkout() appends ?client_reference_id=<channel>_<season>_px<price> for per-sale
    attribution. 50/50 price test, sticky per device; each arm's link carries a
    distinct price id, so every charge also self-reports its arm inside Stripe. */
-const PAYMENT_LINKS={19:"https://buy.stripe.com/eVq7sLcgB9Ok110g0jgYU04"};
-/* single price so creators and ads can name it in-script */
-let px=19;
+const PAYMENT_LINK="https://buy.stripe.com/eVq7sLcgB9Ok110g0jgYU04";
+/* single price so creators and ads can name it in-script; label is the one
+   source of truth for every rendered price surface */
+const PRICE_LABEL="$29.99", PRICE_CENTS=2999;
 const SITE_URL="https://huebloom.app/";
 
 /* Paid report content, one entry per season — injected at build time. */
@@ -1740,7 +1771,7 @@ const store={
       hairHex:lastPhotoRead.hairHex,eyeHex:lastPhotoRead.eyeHex,lipHex:lastPhotoRead.lipHex,
       eyeName:lastPhotoRead.eyeName,hairL:lastPhotoRead.hairL,hue:lastPhotoRead.hue,
       warmSig:lastPhotoRead.warmSig,warmAux:lastPhotoRead.warmAux}:undefined;
-    localStorage.setItem('hue',JSON.stringify({season:currentSeason,unlocked:isUnlocked,via:channel,px:px,read:read}));
+    localStorage.setItem('hue',JSON.stringify({season:currentSeason,unlocked:isUnlocked,via:channel,read:read}));
   }catch(e){}},
   load(){try{return JSON.parse(localStorage.getItem('hue')||'null')}catch(e){return null}}
 };
@@ -1926,12 +1957,12 @@ function runQuizOnly(){
 }
 function vivid(pal){let best=pal[0],bc=-1;for(const p of pal){const n=parseInt(p.hex.slice(1),16),c=Math.max(n>>16&255,n>>8&255,n&255)-Math.min(n>>16&255,n>>8&255,n&255);if(c>bc){bc=c;best=p;}}return best;}
 function render(season){
-  track('price_exposed',{px:px,season:season});
+  track('price_exposed',{px:PRICE_CENTS,season:season});
   currentSeason=season;const d=SEASONS[season];
   document.documentElement.style.setProperty('--tint',d.tint);
   $('seasonName').textContent=season;$('cardSeason').textContent=season;$('seasonDesc').textContent=d.desc;
   const ins=$('insight');ins.hidden=!lastInsight;ins.textContent=lastInsight||'';
-  $('unlockBtn').textContent='Unlock my '+season+' report — $'+px;
+  $('unlockBtn').textContent='Unlock my '+season+' report — '+PRICE_LABEL;
   $('lockTitle').textContent='Your '+season+' report is ready';
   track('result_viewed',{season:season,method:$('previewImg').getAttribute('src')?'photo':'quiz-only'});
   $('cardBand').innerHTML=d.band.map(c=>`<i style="background:${c}"></i>`).join('');
@@ -1986,6 +2017,8 @@ function render(season){
 }
 function swatchGrid(list){return list.map(s=>`<div class="nsw"><div class="c" style="background:${s.hex}"></div><b>${s.name}</b><small>${s.hex.toUpperCase()}</small></div>`).join('');}
 function chipRow(list){return `<div class="chiprow">`+list.map(s=>`<span class="mchip"><i style="background:${s.hex}"></i>${s.name}</span>`).join('')+`</div>`;}
+function panGrid(list,round){return `<div class="pans${round?' round':''}">`+list.map(s=>`<div class="pan-cell"><div class="pan" style="background:${s.hex}"></div><b>${s.name}</b></div>`).join('')+`</div>`;}
+function compact(no,title,sub,inner){return `<div class="report-card compact"><div class="cpt-head"><div><div class="cpt-eyebrow">The Compact &middot; No. ${no}</div><h4 class="serif">${title}</h4><div class="rc-sub">${sub}</div></div><span class="cpt-stamp">HUE</span></div>${inner}</div>`;}
 function applyLocked(){
   $('lockwrap').style.display='';$('fullNamed').style.display='none';
   const det=SEASON_DETAILS&&SEASON_DETAILS[currentSeason];
@@ -1997,11 +2030,21 @@ function applyLocked(){
     <h4 class="serif">Colors to retire</h4>
     <div class="rc-sub">Six shades are quietly draining you — your report names each one, and why.</div>
     <div class="avoid-teaser">${det.avoid.map(()=>'<div class="c"></div>').join('')}<span>six colors, revealed in your report</span></div>
+  </div>
+  <div class="report-card compact compact-lock" role="button" tabindex="0" aria-label="Unlock the makeup edit — ${PRICE_LABEL}" onclick="checkout()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();checkout();}">
+    <div class="cpt-head"><div><div class="cpt-eyebrow">The Compact &middot; No. 2</div><h4 class="serif">The makeup edit</h4><div class="rc-sub">Already pressed and waiting in your ${currentSeason} report.</div></div><span class="cpt-stamp">HUE</span></div>
+    <div class="pantray frost">
+      <div class="tray-label">Lips <em>&middot; four shades</em></div>
+      ${panGrid(det.makeup.lips,true)}
+      <div class="tray-label" style="margin-top:14px">Blush</div>
+      ${panGrid(det.makeup.blush,true)}
+      <div class="frost-veil"><b>Sealed until it&rsquo;s yours</b><span>Your four lip shades, two blushes, eye colors and the exact foundation ask — named, matched to ${currentSeason}, yours forever.</span><em>Unlock — ${PRICE_LABEL}</em></div>
+    </div>
   </div>`:''}
   <div class="report-card">
     <h4 class="serif">Inside the ${currentSeason} report</h4>
     <div class="rc-sub">Everything unlocks the moment you're back from checkout.</div>
-    ${['30+ named shades with exact hex codes','The six colors quietly working against you — and why','Your makeup formula: the foundation ask, lips, blush, eyes','Hair direction to take to your colorist','Your wardrobe system: neutrals, metals, prints + three combinations to steal'].map(t=>`<div class="mrow"><svg viewBox="0 0 24 24"><path d="M4.5 12.5l5 5L19.5 7"/></svg><span>${t}</span></div>`).join('')}
+    ${['Your makeup formula: the foundation ask, four lips, two blushes, eyes','30+ named shades with exact hex codes','The six colors quietly working against you — and why','Hair direction to take to your colorist','Your wardrobe system: neutrals, metals, prints + three combinations to steal'].map(t=>`<div class="mrow"><svg viewBox="0 0 24 24"><path d="M4.5 12.5l5 5L19.5 7"/></svg><span>${t}</span></div>`).join('')}
   </div>`;
   $('payBlock').style.display='';$('unlockedBadge').style.display='none';
   $('shareBlock').style.display='none';$('shareLink').style.display='';
@@ -2021,14 +2064,14 @@ function applyUnlocked(){
       <div class="rc-sub">The shades quietly working against you — donate, don't buy.</div>
       ${det.avoid.map(a=>`<div class="avoid-row"><div class="c" style="background:${a.hex}"></div><div><b>${a.name}</b><span>${a.why}</span></div></div>`).join('')}
     </div>
-    <div class="report-card">
-      <h4 class="serif">Your makeup formula</h4>
-      <div class="rc-sub">What to ask for at the counter.</div>
-      <p><b>Foundation.</b> ${det.makeup.foundation}</p>
-      <p style="margin-bottom:4px"><b>Lips</b> — everyday to statement</p>${chipRow(det.makeup.lips)}
-      <p style="margin-bottom:4px"><b>Blush</b></p>${chipRow(det.makeup.blush)}
-      <p><b>Eyes.</b> ${det.makeup.eyes}</p>
-    </div>
+    ${compact(1,'Colors to wear','Your signature shades, pressed into one place — wear them near your face.',`
+      <div class="pantray"><div class="tray-label">Signature shades <em>&middot; first reach</em></div>${panGrid(det.palette.slice(0,12))}</div>
+      <div class="pantray"><div class="tray-label">Your neutrals <em>&middot; these replace black &amp; white</em></div>${panGrid(det.wardrobe.neutrals)}</div>`)}
+    ${compact(2,'The makeup edit',`What to ask for at the counter — matched to ${currentSeason}.`,`
+      <div class="pantray"><div class="tray-label">Lips <em>&middot; everyday &rarr; statement</em></div>${panGrid(det.makeup.lips,true)}</div>
+      <div class="pantray"><div class="tray-label">Blush</div>${panGrid(det.makeup.blush,true)}</div>
+      <div class="pantray"><div class="tray-label">Eyes</div><p class="eye-note">${det.makeup.eyes}</p></div>
+      <div class="counter-note"><b>The foundation ask</b>${det.makeup.foundation}</div>`)}
     <div class="report-card">
       <h4 class="serif">Hair that flatters</h4>
       <div class="rc-sub">Take this to your colorist.</div>
@@ -2037,7 +2080,6 @@ function applyUnlocked(){
     <div class="report-card">
       <h4 class="serif">Your wardrobe system</h4>
       <div class="rc-sub">Neutrals, metals and combinations that always work.</div>
-      <p style="margin-bottom:4px"><b>Your neutrals</b> — these replace default black &amp; white</p>${chipRow(det.wardrobe.neutrals)}
       <p><b>Metals.</b> ${det.wardrobe.metals}</p>
       <p><b>Prints.</b> ${det.wardrobe.prints}</p>
       <p style="margin-bottom:2px"><b>Three combinations to steal</b></p>
@@ -2046,9 +2088,9 @@ function applyUnlocked(){
 }
 function checkout(){
   store.save();
-  track('checkout_clicked',{season:currentSeason,px:px});
-  const ref=((channel||'direct')+'_'+(currentSeason||'unknown').toLowerCase().replace(/ /g,'-')+'_px'+px).slice(0,180);
-  location.href=PAYMENT_LINKS[px]+'?client_reference_id='+encodeURIComponent(ref);
+  track('checkout_clicked',{season:currentSeason,px:PRICE_CENTS});
+  const ref=((channel||'direct')+'_'+(currentSeason||'unknown').toLowerCase().replace(/ /g,'-')+'_px'+PRICE_CENTS).slice(0,180);
+  location.href=PAYMENT_LINK+'?client_reference_id='+encodeURIComponent(ref);
 }
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),3400);}
 
@@ -2145,7 +2187,7 @@ buildDecks();
   const viaParam=p.get('via');
   channel=(viaParam&&/^[a-z0-9_-]{1,20}$/i.test(viaParam))?viaParam.toLowerCase():((saved&&saved.via)||null);
   if(fromStripe||viaParam||p.get('start'))history.replaceState(null,'',location.pathname);
-  if(fromStripe)track('purchase_completed',{via:channel||'direct',season:(saved&&saved.season)||null,px:(saved&&saved.px)||px});
+  if(fromStripe)track('purchase_completed',{via:channel||'direct',season:(saved&&saved.season)||null,px:PRICE_CENTS});
   if(fromStripe||(saved&&saved.unlocked))isUnlocked=true;
   if(saved&&saved.read&&saved.read.skinHex)lastPhotoRead=saved.read;
   if(isUnlocked){
