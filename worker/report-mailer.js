@@ -48,8 +48,12 @@ const SLUGS = {};
 for (const name of Object.keys(SEASONS)) SLUGS[name.toLowerCase().replace(/ /g, '-')] = name;
 
 function seasonFromRef(ref) {
-  for (const slug of Object.keys(SLUGS)) {
-    if (ref === slug || ref.endsWith('_' + slug)) return SLUGS[slug];
+  /* ref = <channel>_<season-slug>_px<cents>; older refs were <channel>_<slug> or a
+     bare <slug>. Scan segments from the END so a channel name that happens to
+     contain a season string can never shadow the real season. */
+  const parts = ref.split('_');
+  for (let i = parts.length - 1; i >= 0; i--) {
+    if (SLUGS[parts[i]]) return SLUGS[parts[i]];
   }
   return null;
 }
