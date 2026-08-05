@@ -486,6 +486,56 @@ window.track=function(ev,props){try{if(/^phc_/.test(window.HUE_PH_KEY)&&window.p
 posthog.init(window.HUE_PH_KEY,{api_host:window.HUE_PH_HOST,defaults:'2026-05-30',persistence:'memory',autocapture:false,disable_session_recording:true});
 (function(){var m=(new URLSearchParams(location.search).get('via')||'').match(/^[a-z0-9_-]{1,24}$/);if(m)posthog.register({via:m[0]});})();
 </script>
+<script src="assets/pixel-id.js"></script>
+<script>
+/* Meta pixel — for ad measurement and retargeting. OFF unless a valid pixel ID
+   is set in assets/pixel-id.js, which also drives the Advertising disclosure in
+   privacy.html so the tracker and its disclosure can never ship apart.
+
+   What the pixel is allowed to receive: the event NAME, and for Purchase the
+   value and currency. Nothing else. Never the photo, never the tones measured
+   from it, never the quiz answers, and never the season. The season is an
+   inference about a person's appearance; keeping it out of Meta is what keeps
+   "never your photo, never the tones it measured" literally true, and keeps the
+   event names clear of Meta's Business Tools Terms §1.h restriction on events
+   that reflect or imply protected categories.
+
+   DO NOT append the _fbp cookie to client_reference_id for Conversions API
+   attribution. _fbp values look like fb.1.1596403881668.1116446470 and Stripe
+   SILENTLY DROPS a client_reference_id containing invalid characters (dots),
+   which would make seasonFromRef receive '' and send every buyer the generic
+   fallback email again — the exact bug fixed in 307bef5. If CAPI is added
+   later, transpose dots to dashes and add a regression case first. */
+(function(){
+  var ID = String(window.HUE_META_PIXEL_ID || '');
+  window.HUE_META_ON = /^\d{15,16}$/.test(ID);
+  /* No-op stub so call sites never need to check. */
+  window.fbtrack = function(){};
+  if (!window.HUE_META_ON) return;
+
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+  n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+  document,'script','https://connect.facebook.net/en_US/fbevents.js');
+
+  /* Limited Data Use for US state privacy laws. 0,0 = let Meta geolocate and
+     apply LDU only where required. This costs some targeting reach; that is a
+     deliberate trade for a product that promises privacy on its face. */
+  fbq('dataProcessingOptions', ['LDU'], 0, 0);
+  fbq('init', ID);
+  fbq('track', 'PageView');
+
+  /* Standard-event names are case-sensitive: ViewContent, InitiateCheckout,
+     Purchase. Purchase REQUIRES value + currency. */
+  window.fbtrack = function(ev, props){
+    try { if (window.fbq) fbq('track', ev, props || {}); } catch(e){}
+  };
+})();
+</script>
+<noscript><!-- pixel <noscript> fallback is intentionally omitted: it cannot be
+gated on assets/pixel-id.js, so it would fire even with the pixel switched off
+and with no disclosure shown. --></noscript>
 </head>
 <body>
 
@@ -1965,6 +2015,8 @@ function render(season){
   $('unlockBtn').textContent='Unlock my '+season+' report — '+PRICE_LABEL;
   $('lockTitle').textContent='Your '+season+' report is ready';
   track('result_viewed',{season:season,method:$('previewImg').getAttribute('src')?'photo':'quiz-only'});
+  /* Meta gets the event only — no season, no method, no read. */
+  fbtrack('ViewContent');
   $('cardBand').innerHTML=d.band.map(c=>`<i style="background:${c}"></i>`).join('');
   const parts=season.split(' ');
   const border=!!(lastTemp&&lastTemp.borderline&&lastTemp.sister&&lastTemp.sister!==season);
@@ -2089,6 +2141,7 @@ function applyUnlocked(){
 function checkout(){
   store.save();
   track('checkout_clicked',{season:currentSeason,px:PRICE_CENTS});
+  fbtrack('InitiateCheckout',{value:PRICE_CENTS/100,currency:'USD'});
   const ref=((channel||'direct')+'_'+(currentSeason||'unknown').toLowerCase().replace(/ /g,'-')+'_px'+PRICE_CENTS).slice(0,180);
   location.href=PAYMENT_LINK+'?client_reference_id='+encodeURIComponent(ref);
 }
@@ -2187,13 +2240,31 @@ buildDecks();
   const viaParam=p.get('via');
   channel=(viaParam&&/^[a-z0-9_-]{1,20}$/i.test(viaParam))?viaParam.toLowerCase():((saved&&saved.via)||null);
   if(fromStripe||viaParam||p.get('start'))history.replaceState(null,'',location.pathname);
-  if(fromStripe)track('purchase_completed',{via:channel||'direct',season:(saved&&saved.season)||null,px:PRICE_CENTS});
+  /* ?unlocked=1 is BOTH the Stripe success redirect AND the permanent restore
+     link minted in the report email, so this block runs again every time a
+     buyer re-opens their email on this device. Counting it each time inflated
+     revenue reporting (one $29.99 sale plus three re-opens read as $119.96) and
+     would feed Meta the same phantom conversions. Count at most once. */
+  var firstUnlock=false;
+  if(fromStripe){
+    try{firstUnlock=localStorage.getItem('hue_purchase_counted')!=='1'}catch(e){firstUnlock=true}
+    if(firstUnlock){
+      try{localStorage.setItem('hue_purchase_counted','1')}catch(e){}
+      track('purchase_completed',{via:channel||'direct',season:(saved&&saved.season)||null,px:PRICE_CENTS});
+      /* Meta gets value + currency only — never the season. */
+      fbtrack('Purchase',{value:PRICE_CENTS/100,currency:'USD'});
+    }
+  }
   if(fromStripe||(saved&&saved.unlocked))isUnlocked=true;
   if(saved&&saved.read&&saved.read.skinHex)lastPhotoRead=saved.read;
   if(isUnlocked){
     if(saved&&saved.season&&SEASONS[saved.season]){
       render(saved.season);
-      if(fromStripe)toast('Payment received — your '+saved.season+' report is unlocked below.');
+      /* Same link serves the post-checkout redirect and the email restore link,
+         so only say "payment received" the first time. */
+      if(fromStripe)toast(firstUnlock
+        ?'Payment received — your '+saved.season+' report is unlocked below.'
+        :'Welcome back — your '+saved.season+' report is unlocked below.');
     }else{
       /* unlock arrived on a device with no quiz result yet — keep the unlock,
          never clobber a prior season, and say exactly what to do next */
@@ -2205,7 +2276,9 @@ buildDecks();
         n.innerHTML='Your unlock is active on this device — <em>take the two-minute quiz to reveal your full report.</em>';
         cta.after(n);
       }
-      if(fromStripe)toast('Payment received — take the quiz to reveal your full report.');
+      if(fromStripe)toast(firstUnlock
+        ?'Payment received — take the quiz to reveal your full report.'
+        :'Your unlock is active — take the quiz to reveal your full report.');
     }
   }else if(saved&&saved.season&&SEASONS[saved.season]){
     /* highest-intent visitor: saw their result, didn't pay, came back */
