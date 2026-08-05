@@ -34,6 +34,13 @@ const cases = [
   ['direct_true-winter_px2999', 'True Winter'],
   ['fbg-stcharles_light-spring_px2999', 'Light Spring'],
   ['ttbrand_soft-summer_px2999', 'Soft Summer'],
+  /* Every channel slug the marketing assets actually mint. fbg-<group> can run
+     long and contains dashes, which is exactly the shape most likely to confuse
+     a segment scan. */
+  ['fbg-genevacapsulemoms_deep-autumn_px2999', 'Deep Autumn'],
+  ['fbpage_bright-winter_px2999', 'Bright Winter'],
+  ['email_true-autumn_px2999', 'True Autumn'],
+  ['fbg-local_soft-autumn_px2999', 'Soft Autumn'],
   /* legacy refs minted before the _px suffix landed */
   ['tiktok_true-winter', 'True Winter'],
   ['bright-spring', 'Bright Spring'],
