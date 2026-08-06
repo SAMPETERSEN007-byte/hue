@@ -4,10 +4,21 @@
    string (the default) means NO pixel loads and NO advertising disclosure is
    shown -- the site behaves exactly as it did before this file existed.
 
-   Both surfaces read THIS file:
-     - index.html   loads the pixel only when the ID is valid
-     - privacy.html reveals the "Advertising" section, and swaps the
-                    "no ad trackers" claim, only when the ID is valid
+   Every surface that makes a tracking claim reads THIS file:
+     - index.html   loads the pixel only when the ID is valid, AND swaps its own
+                    FAQ answer, which otherwise denies cookies and ad trackers
+                    on the very page load that sets _fbp
+     - privacy.html reveals the "Advertising" section and swaps the
+                    "no ad trackers" and "no sharing" claims
+
+   index.html was MISSING from this list once, and the omission was invisible
+   because privacy.html flipped correctly — the page that loads the pixel was
+   never the page being checked. If you add a tracking claim anywhere, gate it
+   here and add it to this list.
+
+   The JSON-LD FAQ block in index.html deliberately makes NO cookie or tracker
+   claim: structured data cannot be gated by script, search engines read the
+   served HTML, and a false claim there outlives any later fix.
 
    That coupling is the point. A Meta pixel is an ad tracker, sets a first-party
    _fbp cookie, and does cross-site tracking -- all three of which this site's

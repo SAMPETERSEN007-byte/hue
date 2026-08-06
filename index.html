@@ -33,7 +33,7 @@
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
 {"@type":"Question","name":"How does HUE find my season?","acceptedAnswer":{"@type":"Answer","text":"One selfie, analyzed instantly on your device, is the primary read. HUE finds your face — true face detection, not a hopeful guess at the middle of the frame — then reads it feature by feature: skin at the cheeks and forehead, hair at the crown, the color of your iris, the undertone of your lips. The tones it measured are shown beside your result. Five quick questions — metals, veins, sun response, contrast, whites — sharpen the placement into your season."}},
-{"@type":"Question","name":"Is my photo uploaded anywhere?","acceptedAnswer":{"@type":"Answer","text":"Never. Your selfie is analyzed in your browser, on your device — it never touches a server. No accounts, no cookies, no ad trackers — only anonymous, cookieless counts of which steps get used: the step and the season name, never your photo, never the tones it measured."}},
+{"@type":"Question","name":"Is my photo uploaded anywhere?","acceptedAnswer":{"@type":"Answer","text":"Never. Your selfie is analyzed in your browser, on your device — it never touches a server. No accounts, and our usage analytics are anonymous and cookieless: the step and the season name, never your photo, never the tones it measured. Our privacy policy lists every third party that receives anything."}},
 {"@type":"Question","name":"What's in the $29.99 full report?","acceptedAnswer":{"@type":"Answer","text":"Your complete palette of 30+ named shades, the six colors quietly working against you (and why), your makeup formula, hair direction to take to your colorist, and a wardrobe system: neutrals, metals, prints, and three combinations to steal. One-time purchase, no subscription — and the full report is also emailed to you, so it's yours forever on any device."}},
 {"@type":"Question","name":"How is this different from a $300 draping?","acceptedAnswer":{"@type":"Answer","text":"An in-person analyst drapes dozens of fabrics against your face over a couple of hours — it's the gold standard, and it costs $200–400. HUE uses the same 12-season system, self-served: your answers plus a daylight selfie, in about two minutes."}},
 {"@type":"Question","name":"What if I'm not happy with it?","acceptedAnswer":{"@type":"Answer","text":"Every purchase has a 30-day money-back guarantee. Email us, get your $29.99 back, no questions asked."}},
@@ -550,7 +550,29 @@ window.readVia=function(){
    later, transpose dots to dashes and add a regression case first. */
 (function(){
   var ID = String(window.HUE_META_PIXEL_ID || '');
-  window.HUE_META_ON = /^\d{15,16}$/.test(ID);
+
+  /* A real opt-out, because privacy.html promises one.
+     Honoured BEFORE the pixel loads, so opting out means fbevents.js is never
+     fetched and no _fbp cookie is ever written — not merely that events stop.
+     Also respects Global Privacy Control, which several US state laws treat as
+     a legally binding opt-out signal. */
+  var optedOut = false;
+  try { optedOut = localStorage.getItem('hue_ads_optout') === '1'; } catch (e) {}
+  if (navigator.globalPrivacyControl === true) optedOut = true;
+  window.HUE_ADS_OPTED_OUT = optedOut;
+  window.hueOptOutOfAds = function(){
+    try { localStorage.setItem('hue_ads_optout','1'); } catch(e){}
+    try { if (window.fbq) fbq('consent','revoke'); } catch(e){}
+    window.HUE_ADS_OPTED_OUT = true;
+    return true;
+  };
+  window.hueOptInToAds = function(){
+    try { localStorage.removeItem('hue_ads_optout'); } catch(e){}
+    window.HUE_ADS_OPTED_OUT = false;
+    return true;
+  };
+
+  window.HUE_META_ON = /^\d{15,16}$/.test(ID) && !optedOut;
   /* No-op stub so call sites never need to check. */
   window.fbtrack = function(){};
   if (!window.HUE_META_ON) return;
@@ -574,6 +596,17 @@ window.readVia=function(){
     try { if (window.fbq) fbq('track', ev, props || {}); } catch(e){}
   };
 })();
+
+/* Flip the page's own privacy copy from the SAME value that switches the pixel
+   on. privacy.html has had this since the pixel landed; index.html did not, so
+   the landing page would have asserted "no cookies, no ad trackers" on the very
+   page load that sets _fbp. Served HTML is the pixel-OFF wording, so a script
+   failure shows the conservative claim rather than a false disclosure. */
+document.addEventListener('DOMContentLoaded', function(){
+  if (!window.HUE_META_ON) return;
+  document.querySelectorAll('[data-pixel-on]').forEach(function(el){ el.hidden = false; });
+  document.querySelectorAll('[data-pixel-off]').forEach(function(el){ el.hidden = true; });
+});
 </script>
 <noscript><!-- pixel <noscript> fallback is intentionally omitted: it cannot be
 gated on assets/pixel-id.js, so it would fire even with the pixel switched off
@@ -758,7 +791,7 @@ and with no disclosure shown. --></noscript>
         </details>
         <details>
           <summary>Is my photo uploaded anywhere?</summary>
-          <div class="a">Never. Your selfie is analyzed in your browser, on your device — it never touches a server. No accounts, no cookies, no ad trackers — only anonymous, cookieless counts of which steps get used: the step and the season name, never your photo, never the tones it measured. See the <a href="privacy.html">privacy policy</a>; it's short, because we barely collect anything.</div>
+          <div class="a">Never. Your selfie is analyzed in your browser, on your device — it never touches a server.<span data-pixel-off> No accounts, no cookies, no ad trackers — only anonymous, cookieless counts of which steps get used: the step and the season name, never your photo, never the tones it measured.</span><span data-pixel-on hidden> No accounts, and our usage analytics are anonymous and cookieless — the step and the season name, never your photo, never the tones it measured. We do run one advertising cookie for the Meta pixel, and it never receives your photo, your measurements or your season.</span> See the <a href="privacy.html">privacy policy</a>; it lists every third party that receives anything.</div>
         </details>
         <details>
           <summary>What's in the $29.99 full report?</summary>
