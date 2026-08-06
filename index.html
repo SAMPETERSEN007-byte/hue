@@ -341,6 +341,18 @@
   .combo{display:flex;gap:14px;align-items:baseline;padding:9px 0}
   .combo .n{font-family:"Bodoni Moda";font-style:italic;color:var(--accent);font-size:17px;flex:0 0 18px}
   .combo p{margin:0;font-size:15px}
+  /* Every season carries five named neutrals and the sales copy sells "your
+     neutrals" by name — but nothing rendered them, so the buyer paid for a
+     section that silently did not exist. */
+  .neutral-tray{display:flex;margin:8px 0 6px;border-radius:4px;overflow:hidden;border:1px solid rgba(43,33,41,.10)}
+  .neutral-tray i{flex:1;height:36px;display:block}
+  .neutral-names{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 2px;font-size:11.5px;letter-spacing:.02em;color:var(--soft)}
+  /* A combination you can SEE beats one you have to picture. The colors named
+     in each combo already exist in this season's own data. */
+  .combo{align-items:flex-start}
+  .combo-body{flex:1;min-width:0}
+  .combo-chips{display:flex;gap:5px;margin:1px 0 6px}
+  .combo-chips i{width:27px;height:27px;border-radius:3px;display:block;border:1px solid rgba(43,33,41,.10)}
   .unlocked-note{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--accent);font-weight:600;font-size:13.5px;letter-spacing:.04em;margin-bottom:4px}
   .unlocked-note svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   /* POST-CHECKOUT screen — the buyer has paid but their unlock lives in the
@@ -2217,6 +2229,49 @@ function applyLocked(){
   $('shareBlock').style.display='none';$('shareLink').style.display='';
   $('fullLabel').textContent='Your full palette · '+(det&&det.palette?det.palette.length+' shades':'30+ shades');
 }
+/* Resolve the colors NAMED inside a combo string ("Cream ivory silk blouse +
+   honey camel trousers + tomato-red lip") to real swatches. Every color word in
+   a combo is already a named shade somewhere in this season's own data, so
+   nothing here invents a color — it only finds one that was always there.
+
+   Longest name first: "Golden Camel" must win over "Camel", and "Coral Crush"
+   over "Coral", or a combo shows the wrong swatch. Matching is done on letters
+   only so "tomato-red" meets "Tomato Red". A part that resolves to nothing
+   renders no chip rather than a guess — a wrong color here is worse than none,
+   because the buyer is about to go buy clothes in it. */
+/* Words too generic to identify a shade on their own. Without this list the
+   fallback matched "jet-black pumps" and "Black tailoring" to Black Cherry — a
+   dark RED — and "golden camel tote" to Golden Khaki. Basic color terms and
+   modifiers only ever appear as the FIRST word of compound shade names, so
+   barring them costs nothing: a combo that genuinely names one is caught by the
+   verbatim pass above. Distinctive nouns (coral, tomato, emerald, rust) stay
+   eligible. Metal words are here too, which keeps jewelry chip-less — "gold
+   hoops" and "silver hoops" are hardware, not palette colors. */
+const COMBO_GENERIC=Object.fromEntries(('black white red blue green grey gray pink brown purple orange '
+ +'yellow silver gold golden deep soft true bright dark light warm cool icy pale rich pure')
+ .split(' ').map(w=>[w,1]));
+function comboChips(text,det){
+  const idx=[].concat(det.wardrobe&&det.wardrobe.neutrals||[], det.palette||[],
+                      det.makeup&&det.makeup.lips||[], det.makeup&&det.makeup.blush||[])
+    .filter(c=>c&&c.hex&&c.name)
+    .sort((a,b)=>b.name.length-a.name.length);
+  const norm=s=>String(s).toLowerCase().replace(/[^a-z]+/g,' ').trim();
+  return String(text).split('+').map(part=>{
+    const p=' '+norm(part)+' ';
+    /* 1. whole shade name appears verbatim — "honey camel trousers" */
+    let hit=idx.find(c=>p.indexOf(' '+norm(c.name)+' ')>=0);
+    /* 2. failing that, a shade whose FIRST word is a standalone word here —
+       "coral sandals" -> Coral Crush. First-word equality, not prefix: "gold
+       hoops" must NOT match "Golden Camel", and it doesn't, because the first
+       word is "golden". Prefix matching would have shown camel for gold. */
+    if(!hit){
+      const words=norm(part).split(' ');
+      hit=idx.find(c=>{const f=norm(c.name).split(' ')[0];
+        return f.length>3&&!COMBO_GENERIC[f]&&words.indexOf(f)>=0;});
+    }
+    return {hex:hit?hit.hex:null,name:hit?hit.name:null};
+  });
+}
 function applyUnlocked(){
   const det=SEASON_DETAILS&&SEASON_DETAILS[currentSeason];
   if(!det){applyLocked();return;}
@@ -2247,10 +2302,17 @@ function applyUnlocked(){
     <div class="report-card">
       <h4 class="serif">Your wardrobe system</h4>
       <div class="rc-sub">Neutrals, metals and combinations that always work.</div>
+      ${(det.wardrobe.neutrals&&det.wardrobe.neutrals.length)?`
+      <p style="margin-bottom:2px"><b>Your neutrals.</b> The base everything else is built on.</p>
+      <div class="neutral-tray">${det.wardrobe.neutrals.map(n=>`<i style="background:${n.hex}" title="${n.name}"></i>`).join('')}</div>
+      <div class="neutral-names">${det.wardrobe.neutrals.map(n=>`<span>${n.name}</span>`).join('')}</div>`:''}
       <p><b>Metals.</b> ${det.wardrobe.metals}</p>
       <p><b>Prints.</b> ${det.wardrobe.prints}</p>
       <p style="margin-bottom:2px"><b>Three combinations to steal</b></p>
-      ${det.wardrobe.combos.map((c,i)=>`<div class="combo"><span class="n">${['I','II','III'][i]}</span><p>${c}</p></div>`).join('')}
+      ${det.wardrobe.combos.map((c,i)=>{
+        const chips=comboChips(c,det).filter(p=>p.hex);
+        return `<div class="combo"><span class="n">${['I','II','III'][i]}</span><div class="combo-body">${chips.length?`<div class="combo-chips">${chips.map(p=>`<i style="background:${p.hex}" title="${p.name}"></i>`).join('')}</div>`:''}<p>${c}</p></div></div>`;
+      }).join('')}
     </div>`;
 }
 function checkout(){
