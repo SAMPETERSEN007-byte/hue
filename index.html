@@ -341,16 +341,49 @@
   .combo{display:flex;gap:14px;align-items:baseline;padding:9px 0}
   .combo .n{font-family:"Bodoni Moda";font-style:italic;color:var(--accent);font-size:17px;flex:0 0 18px}
   .combo p{margin:0;font-size:15px}
-  /* A combination you can SEE beats one you have to picture. The colors named
-     in each combo already exist in this season's own data.
+  /* These are CLOTHES, not colors. A swatch row still asks the reader to do the
+     imagining; drawing the actual garment in the actual colour does not. Each
+     piece the combo names is rendered as its own silhouette, filled with the
+     shade resolved for it — so a combination reads as a flat-lay of the outfit.
      NB: wardrobe.neutrals is deliberately NOT drawn here — the Compact "Colors
      to wear" card already renders those same five shades, larger and named,
-     under "these replace black & white". Drawing them again put the identical
-     tray twice in one report. */
+     under "these replace black & white". */
   .combo{align-items:flex-start}
   .combo-body{flex:1;min-width:0}
-  .combo-chips{display:flex;gap:5px;margin:1px 0 6px}
-  .combo-chips i{width:27px;height:27px;border-radius:3px;display:block;border:1px solid rgba(43,33,41,.10)}
+  .lay{display:flex;flex-wrap:wrap;gap:9px;margin:2px 0 8px}
+  .lay figure{margin:0;width:52px;text-align:center}
+  .lay svg{width:42px;height:42px;display:block;margin:0 auto}
+  /* An unresolved piece keeps its silhouette but takes no shade — the shape is
+     still information ("hoops"), while an invented colour would not be. It gets
+     a faint paper wash rather than nothing, so it reads as deliberate line-art
+     beside its filled neighbours instead of a failed render. */
+  .lay .g{fill:var(--fill,rgba(43,33,41,.055));stroke:rgba(43,33,41,.34);
+          stroke-width:1.1;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+  .lay figcaption{font-size:9.5px;line-height:1.25;letter-spacing:.05em;
+          text-transform:uppercase;color:var(--soft);margin-top:3px}
+  /* hair: the colorist strip. "Ask for" and "Turn down" are the two things a
+     colorist actually needs, so they are the two rows. */
+  .hairdir{margin-top:16px;padding-top:14px;border-top:1px solid rgba(43,33,41,.12)}
+  .hd-label{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+          font-weight:600;color:var(--accent);margin:0 0 7px}
+  .hd-label.hd-no{color:var(--soft);margin-top:14px}
+  .hd-row{display:flex;flex-wrap:wrap;gap:12px}
+  .hd-row figure{margin:0;width:60px;text-align:center}
+  .hd-row figure span{display:block;width:44px;height:44px;margin:0 auto;border-radius:50%;
+          border:1px solid rgba(43,33,41,.14)}
+  .hd-row figcaption{font-size:9.5px;line-height:1.24;letter-spacing:.04em;
+          text-transform:uppercase;color:var(--soft);margin-top:5px}
+  /* struck through, not merely faded — at a glance the reader must not mistake
+     a "turn down" tone for one to ask for */
+  /* only lightly muted: at .55 platinum, ash and mushroom washed into three
+     identical greys, which defeats showing them at all. The strike does the
+     work of saying no; the swatch still has to be recognisable. */
+  .hd-row figure.no span{position:relative;opacity:.85}
+  .hd-row figure.no span::after{content:"";position:absolute;inset:-1px;border-radius:50%;
+          background:linear-gradient(to bottom right,transparent calc(50% - 1px),
+          rgba(43,33,41,.72) calc(50% - 1px),rgba(43,33,41,.72) calc(50% + 1px),
+          transparent calc(50% + 1px))}
+  .hd-row figure.no figcaption{opacity:.72}
   .unlocked-note{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--accent);font-weight:600;font-size:13.5px;letter-spacing:.04em;margin-bottom:4px}
   .unlocked-note svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   /* POST-CHECKOUT screen — the buyer has paid but their unlock lives in the
@@ -2246,8 +2279,126 @@ function applyLocked(){
    eligible. Metal words are here too, which keeps jewelry chip-less — "gold
    hoops" and "silver hoops" are hardware, not palette colors. */
 const COMBO_GENERIC=Object.fromEntries(('black white red blue green grey gray pink brown purple orange '
- +'yellow silver gold golden deep soft true bright dark light warm cool icy pale rich pure')
+ +'yellow silver gold golden deep soft true bright dark light warm cool icy pale rich pure '
+ /* materials, not colours. "bronze suede boots" matched a shade called
+    Cinnamon Suede purely on the word suede — the colour named there is bronze.
+    Fabric words identify what a thing is made of, never what shade it is. */
+ +'silk suede denim satin velvet linen cotton wool cashmere leather knit lacquer')
  .split(' ').map(w=>[w,1]));
+/* Which garment a combo part names. Order is the whole trick: accessories and
+   makeup are tested BEFORE clothing, or "gold hoops" lands on nothing and
+   "tomato-red lip" reads as a top. "silk" is last inside the top group so
+   "cream silk blouse" and a bare "Warm ivory silk" both resolve. */
+const GARMENT_MATCH=[
+  [/\b(studs?|pearls?)\b/,'studs'],
+  [/\b(hoops?|earrings?|hardware|necklace|bangle|cuff)\b/,'jewelry'],
+  [/\bblush\b/,'blush'],
+  [/\b(eyes?|liner|shadow)\b/,'eye'],
+  [/\b(lips?|lipstick|gloss|lacquer)\b/,'lip'],
+  [/\b(heels?|pumps?|boots?|sandals?|flats?|loafers?|mules?)\b/,'shoes'],
+  [/\b(tote|bag|clutch|purse|satchel)\b/,'bag'],
+  [/\bscarf\b/,'scarf'],
+  [/\b(blazer|coat|trench|jacket|cardigan|tailoring)\b/,'outer'],
+  [/\b(dress|sheath|gown|slip|midi)\b/,'dress'],
+  [/\bskirt\b/,'skirt'],
+  [/\b(trousers|jeans|pants|chinos|wide-leg)\b/,'trousers'],
+  [/\b(blouse|shirt|tee|top|knit|sweater|shell|camisole|silk)\b/,'top']
+];
+/* 24x24 silhouettes. Deliberately flat and thin-lined to sit inside the
+   editorial look rather than read as stock icons. */
+const GARMENT_SVG={
+  top:'<path class="g" d="M8.6 3.2 4.6 5.5 2.9 9.9l3.1 1.1L5.6 20.8h12.8L18 11l3.1-1.1-1.7-4.4-4-2.3a3.7 3.7 0 0 1-7.4 0Z"/>',
+  trousers:'<path class="g" d="M6.7 3.2h10.6l-.5 17.6h-3.5L12 11.4l-1.3 9.4H7.2Z"/>',
+  skirt:'<path class="g" d="M7.6 4.2h8.8l3.1 16.6H4.5Z"/>',
+  dress:'<path class="g" d="M9 3.2 6.3 5.5l1.5 4.2-2.7 11.1h13.8l-2.7-11.1 1.5-4.2-2.7-2.3a3.4 3.4 0 0 1-6.6 0Z"/>',
+  /* coat: shoulders + sleeves + a lapel V and a centre seam, or it reads as a
+     paper bag — which is exactly what the first draft looked like at 42px */
+  outer:'<path class="g" d="M8.8 3.2 4.2 5.6 3.1 13l2.6.6.3 7.2h12l.3-7.2 2.6-.6-1.1-7.4-4.6-2.4L12 8.9Z"/>'
+       +'<path class="g" d="M12 8.9v11.9" fill="none"/>',
+  shoes:'<path class="g" d="M4.6 6.4h3.3l.5 4.6c.16 1.5 1.1 2.4 2.7 2.8l4.9 1.2c2 .5 3.4 1.6 3.8 3.4l.2 1H4.6Z"/>'
+       +'<path class="g" d="M4.6 17.2h15.1" fill="none"/>',
+  /* hoops are HOLLOW. A filled circle reads as a coin — the first draft did.
+     evenodd on an outer+inner arc pair gives a true ring that still takes the
+     shade as its fill. */
+  jewelry:'<path class="g" fill-rule="evenodd" d="M12 5.9a7 7 0 1 0 0 14 7 7 0 1 0 0-14Zm0 3.1a3.9 3.9 0 1 1 0 7.8 3.9 3.9 0 1 1 0-7.8Z"/>',
+  studs:'<path class="g" d="M12 7.6a4.4 4.4 0 1 0 0 8.8 4.4 4.4 0 1 0 0-8.8Z"/>'
+       +'<path class="g" d="M12 5.2v2.4" fill="none"/>',
+  bag:'<path class="g" d="M5.7 8.7h12.6l-1.2 12.1H6.9Z"/><path class="g" d="M9.1 8.7V7a2.9 2.9 0 0 1 5.8 0v1.7" fill="none"/>',
+  scarf:'<path class="g" d="M7.2 3.2h9.6v7.4c0 2.9-1.5 4.5-3.1 5.5l.8 4.7h-2.4l-.7-4-.7 4H8.3l.8-4.7c-1.6-1-2.1-2.6-2.1-5.5Z"/>',
+  lip:'<path class="g" d="M12 9.1c1.7-2.3 4.6-3 6.6-1.7l2.5 1.5c-2.4 3.6-6 6.3-9.1 7.3-3.1-1-6.7-3.7-9.1-7.3l2.5-1.5C7.4 6.1 10.3 6.8 12 9.1Z"/>',
+  /* a powder pan, so blush is not just the lip shape again */
+  blush:'<path class="g" d="M12 4.8a7.2 7.2 0 1 0 0 14.4 7.2 7.2 0 1 0 0-14.4Z"/>'
+       +'<path class="g" d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 1 0 0-7.2Z" fill="none"/>',
+  eye:'<path class="g" d="M2.9 12c2.6-3.5 5.7-5.3 9.1-5.3S18.5 8.5 21.1 12c-2.6 3.5-5.7 5.3-9.1 5.3S5.5 15.5 2.9 12Z"/>'
+     +'<path class="g" d="M12 9.3a2.7 2.7 0 1 0 0 5.4 2.7 2.7 0 1 0 0-5.4Z" fill="none"/>'
+};
+function garmentOf(part){
+  const p=' '+String(part).toLowerCase()+' ';
+  for(const [re,key] of GARMENT_MATCH) if(re.test(p)) return key;
+  return null;
+}
+/* Short caption under each piece: the garment word itself, so the flat-lay is
+   readable without re-reading the sentence. Takes the LAST noun, not the first
+   — English puts the fabric before the garment, so "cream silk blouse" must
+   caption BLOUSE, not SILK, and "sapphire slip dress" must say DRESS. */
+function garmentLabel(part){
+  const m=String(part).toLowerCase().match(/\b(hoops?|studs?|hardware|lips?|blush|eyes?|heels?|pumps?|boots?|sandals?|flats?|tote|bag|scarf|blazer|coat|trench|jacket|tailoring|dress|sheath|slip|skirt|trousers|jeans|tee|shirt|blouse|knit|shell|silk)\b/g);
+  return m?m[m.length-1]:'';
+}
+/* Hair direction, drawn instead of only described — "take this to your
+   colorist" is a literal instruction, and a strip of actual tones is what you
+   hold up in the chair.
+
+   This is authored per season rather than parsed out of det.hair, because
+   polarity here is genuinely un-heuristicable: the SAME word flips meaning by
+   season (ash is prescribed for Summers and forbidden for Springs), and the
+   copy mixes both polarities inside one sentence — True Summer says ask for
+   "ash" ... and turn down anything warm, while Deep Winter puts the forbidden
+   tones in the subject: "Golden balayage, caramel ribbons and honey highlights
+   will blur the drama." Nothing positional survives both. Every term below is
+   taken from that season's own det.hair prose, and hairDirectionAudit() asserts
+   exactly that, so this can never drift into invention. Getting it backwards
+   would send someone to a colorist for the one shade that ruins them. */
+const HAIR_DIRECTION={
+ 'Light Spring':{wear:[['Golden blonde','#d9a44e'],['Honey','#c89043'],['Strawberry blonde','#c4764a'],['Warm caramel','#a9682f'],['Light golden brown','#a4753c']],
+   avoid:[['Ash','#b0a99e'],['Platinum','#ede7d8'],['Blue-black','#14161c'],['Espresso','#3a2a21']]},
+ 'True Spring':{wear:[['Honey blonde','#c89043'],['Golden caramel','#b07a32'],['Coppery bronze','#a05a2c'],['Warm chestnut','#6e4326']],
+   avoid:[['Ash','#b0a99e'],['Platinum','#ede7d8'],['Mushroom','#7a6c60'],['Blue-black','#14161c']]},
+ 'Bright Spring':{wear:[['Honey blonde','#c89043'],['Warm caramel','#a9682f'],['Sunlit copper','#c06a2e'],['Golden brown','#8a5a2b']],
+   avoid:[['Platinum','#ede7d8'],['Ash brown','#6b5f55'],['Blue-black','#14161c']]},
+ 'Light Summer':{wear:[['Ash blonde','#b5ac9a'],['Beige blonde','#cbb48c'],['Mushroom brown','#7a6c60'],['Silvery','#c9c6c0']],
+   avoid:[['Golden','#c9962f'],['Caramel','#a9682f'],['Black','#1a1a1a']]},
+ 'True Summer':{wear:[['Ash brown','#6b5f55'],['Mushroom brunette','#7a6c60'],['Beige blonde','#cbb48c'],['Silvering grey','#b9b7b4']],
+   avoid:[['Golden caramel','#b07a32'],['Honey','#c89043'],['Copper','#b25a28']]},
+ 'Soft Summer':{wear:[['Ash brown','#6b5f55'],['Mushroom brown','#7a6c60'],['Beige-blonde','#cbb48c'],['Cool bronde','#9a8a76'],['Cool espresso','#38302c']],
+   avoid:[['Golden caramel','#b07a32'],['Copper','#b25a28'],['Honey','#c89043'],['Inky black','#16161a']]},
+ 'Soft Autumn':{wear:[['Golden brown','#8a5a2b'],['Dark honey blonde','#b08343'],['Chestnut','#6e4326'],['Caramel','#a9682f'],['Butterscotch','#c58b3e']],
+   avoid:[['Inky black','#16161a'],['Ash','#b0a99e'],['Platinum','#ede7d8']]},
+ 'True Autumn':{wear:[['Golden brown','#8a5a2b'],['Chestnut','#6e4326'],['Warm auburn','#7e3a22'],['True copper','#b25a28'],['Caramel','#a9682f']],
+   avoid:[['Ash','#b0a99e'],['Platinum','#ede7d8'],['Mushroom','#7a6c60']]},
+ 'Deep Autumn':{wear:[['Deep chocolate','#3a2519'],['Chestnut','#6e4326'],['True auburn','#7e3a22'],['Golden caramel','#b07a32'],['Copper','#b25a28']],
+   avoid:[['Ash','#b0a99e'],['Platinum','#ede7d8'],['Blue-black','#14161c']]},
+ 'Deep Winter':{wear:[['Blue-black','#14161c'],['Espresso','#3a2a21'],['Cool ash-brown','#6b5f55'],['True jet','#1a1a1d']],
+   avoid:[['Golden','#c9962f'],['Caramel','#a9682f'],['Honey','#c89043']]},
+ 'True Winter':{wear:[['Blue-black','#14161c'],['Cool espresso','#38302c'],['Deep ash brown','#6b5f55'],['Platinum','#ede7d8'],['Icy grey','#c9c6c0']],
+   avoid:[['Golden','#c9962f'],['Caramel','#a9682f'],['Honey','#c89043']]},
+ 'Bright Winter':{wear:[['Blue-black','#14161c'],['Cold espresso','#38302c'],['Ash-brown','#6b5f55'],['Platinum','#ede7d8'],['Polished grey','#c4c2be']],
+   avoid:[['Caramel','#a9682f'],['Honey','#c89043'],['Golden','#c9962f']]}
+};
+/* Guard: every tone named above must appear in that season's shipped hair copy.
+   Returns the offenders, so a season whose prose is rewritten fails loudly
+   instead of quietly contradicting the paragraph beside it. */
+function hairDirectionAudit(){
+  const bad=[];
+  for(const [season,dir] of Object.entries(HAIR_DIRECTION)){
+    const prose=((SEASON_DETAILS[season]||{}).hair||'').toLowerCase().replace(/[^a-z]+/g,' ');
+    ['wear','avoid'].forEach(k=>(dir[k]||[]).forEach(([name])=>{
+      const head=name.toLowerCase().replace(/[^a-z]+/g,' ').trim().split(' ')[0];
+      if(prose.indexOf(head)<0) bad.push(season+' / '+k+' / '+name);
+    }));
+  }
+  return bad;
+}
 function comboChips(text,det){
   const idx=[].concat(det.wardrobe&&det.wardrobe.neutrals||[], det.palette||[],
                       det.makeup&&det.makeup.lips||[], det.makeup&&det.makeup.blush||[])
@@ -2266,6 +2417,11 @@ function comboChips(text,det){
       const words=norm(part).split(' ');
       hit=idx.find(c=>{const f=norm(c.name).split(' ')[0];
         return f.length>3&&!COMBO_GENERIC[f]&&words.indexOf(f)>=0;});
+      /* 3. and the shade's LAST word — English writes "Clotted Cream", so a
+         combo saying "cream silk blouse" means that cream. Same generic guard,
+         which is what stops "blue-red lip" grabbing Tomato Red. */
+      if(!hit) hit=idx.find(c=>{const t=norm(c.name).split(' '); const l=t[t.length-1];
+        return t.length>1&&l.length>3&&!COMBO_GENERIC[l]&&words.indexOf(l)>=0;});
     }
     return {hex:hit?hit.hex:null,name:hit?hit.name:null};
   });
@@ -2296,6 +2452,13 @@ function applyUnlocked(){
       <h4 class="serif">Hair that flatters</h4>
       <div class="rc-sub">Take this to your colorist.</div>
       <p>${det.hair}</p>
+      ${(()=>{const d=HAIR_DIRECTION[currentSeason]; if(!d) return '';
+        const row=(list,cls)=>list.map(([n,h])=>
+          `<figure class="${cls}"><span style="background:${h}"></span><figcaption>${n}</figcaption></figure>`).join('');
+        return `<div class="hairdir">`
+          +`<div class="hd-label">Ask for</div><div class="hd-row">${row(d.wear,'')}</div>`
+          +`<div class="hd-label hd-no">Turn down</div><div class="hd-row">${row(d.avoid,'no')}</div>`
+          +`</div>`;})()}
     </div>
     <div class="report-card">
       <h4 class="serif">Your wardrobe system</h4>
@@ -2304,8 +2467,14 @@ function applyUnlocked(){
       <p><b>Prints.</b> ${det.wardrobe.prints}</p>
       <p style="margin-bottom:2px"><b>Three combinations to steal</b></p>
       ${det.wardrobe.combos.map((c,i)=>{
-        const chips=comboChips(c,det).filter(p=>p.hex);
-        return `<div class="combo"><span class="n">${['I','II','III'][i]}</span><div class="combo-body">${chips.length?`<div class="combo-chips">${chips.map(p=>`<i style="background:${p.hex}" title="${p.name}"></i>`).join('')}</div>`:''}<p>${c}</p></div></div>`;
+        const parts=String(c).split('+').map(s=>s.trim()), cols=comboChips(c,det);
+        const lay=parts.map((p,k)=>{
+          const g=garmentOf(p); if(!g) return '';
+          const hex=cols[k]&&cols[k].hex, nm=cols[k]&&cols[k].name;
+          return `<figure><svg viewBox="0 0 24 24" role="img" aria-label="${p}"${hex?` style="--fill:${hex}"`:''}>${GARMENT_SVG[g]}</svg>`
+               +`<figcaption>${garmentLabel(p)||''}${nm?`<br>${nm}`:''}</figcaption></figure>`;
+        }).join('');
+        return `<div class="combo"><span class="n">${['I','II','III'][i]}</span><div class="combo-body">${lay?`<div class="lay">${lay}</div>`:''}<p>${c}</p></div></div>`;
       }).join('')}
     </div>`;
 }
