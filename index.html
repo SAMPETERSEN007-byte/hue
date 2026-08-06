@@ -241,6 +241,12 @@
   .sister-note{max-width:508px;margin:22px auto 2px;padding:18px 22px;border:1px solid rgba(43,33,41,.16);border-radius:5px;background:rgba(255,255,255,.42);text-align:left}
   .sister-note b{display:block;font-family:"Bodoni Moda",serif;font-weight:500;font-size:18px;line-height:1.28;color:var(--accent);margin-bottom:8px}
   .sister-note span{display:block;font-size:13.5px;line-height:1.62;color:var(--soft)}
+  /* a borderline read is an UNDERTONE problem, and the selfie is what measures
+     undertone — so the offered fix is a better photo, not the "Start over" at
+     the foot of the page, which throws away quiz answers that were never in
+     doubt. Without this the honest "we're not sure" is a dead end. */
+  .sister-note .retake{display:block;margin-top:13px;padding:0;background:none;border:0;color:var(--accent);font-family:inherit;font-size:13.5px;font-weight:500;line-height:1.5;text-align:left;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+  .sister-note .retake:hover{opacity:.72}
   /* the tones the engine actually measured — shown only on the selfie path */
   .measured{margin-top:30px}
   .measured-label{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--soft-strong);font-weight:600;margin-bottom:14px}
@@ -2138,7 +2144,8 @@ function render(season){
     const sis=lastTemp.sister, primWarm=/Spring|Autumn/.test(season);
     const warmName=primWarm?season:sis, coolName=primWarm?sis:season;
     sn.innerHTML=`<b>You're right on the line — between ${season} and ${sis}.</b>`
-      +`<span>Your undertone read close to neutral — the one axis a single selfie is least sure of. These two share your depth and clarity and part only on warmth. To settle it, hold gold then silver to your bare face in daylight: if gold makes your skin glow, you lean ${warmName}; if silver looks cleaner, ${coolName}. Your report is built for ${season}, the closer of the two.</span>`;
+      +`<span>Your undertone read close to neutral — the one axis a single selfie is least sure of. These two share your depth and clarity and part only on warmth. To settle it, hold gold then silver to your bare face in daylight: if gold makes your skin glow, you lean ${warmName}; if silver looks cleaner, ${coolName}. Your report is built for ${season}, the closer of the two.</span>`
+      +`<button type="button" class="retake" onclick="retakeSelfie()">${lastPhotoRead?'Retake your selfie in daylight — it may settle this →':'Add a daylight selfie — it settles the undertone →'}</button>`;
     sn.hidden=false;
   }else sn.hidden=true;
   /* the tones the engine measured — the receipt behind the verdict */
@@ -2336,6 +2343,20 @@ async function shareResult(){
   }
 }
 function reset(){$('file').value='';$('fileUp').value='';st.i=0;st.answers=[];st.warm=st.light=st.chroma=0;lastInsight=null;lastPhotoRead=null;lastTemp=null;photoTries=0;const sn=$('sisterNote');if(sn)sn.hidden=true;document.documentElement.style.setProperty('--tint','#f7f2ef');show('intro');}
+/* Retake only the PHOTO after a borderline read. reset() would also wipe the
+   quiz, which is wrong here: the answers were never the ambiguous part, the
+   undertone was. Clearing both file inputs is load-bearing — re-picking the
+   SAME file fires no change event, so without it the button looks dead to
+   anyone who just steps outside and reshoots. photoTries resets so the two
+   bad-light retries start fresh rather than being already spent. */
+function retakeSelfie(){
+  $('file').value='';$('fileUp').value='';
+  lastPhotoRead=null;lastTemp=null;lastInsight=null;photoTries=0;
+  const sn=$('sisterNote');if(sn)sn.hidden=true;
+  $('capSub').textContent="Your undertone landed between two seasons. A photo in indirect daylight — near a window, no filter, no makeup if you can — is what settles it.";
+  track('retake_from_borderline');
+  show('capture');
+}
 
 buildDecks();
 
