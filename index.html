@@ -359,6 +359,11 @@
      beside its filled neighbours instead of a failed render. */
   .lay .g{fill:var(--fill,rgba(43,33,41,.055));stroke:rgba(43,33,41,.34);
           stroke-width:1.1;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+  /* A CSS fill beats a presentation attribute, so the rule above was filling
+     the paths that exist only as LINES — the coat's centre seam, the bag
+     handle, the blush pan's inner ring, the iris — turning each glyph into a
+     solid blob. The attribute selector outranks .lay .g and gives them back. */
+  .lay .g[fill="none"]{fill:none}
   .lay figcaption{font-size:9.5px;line-height:1.25;letter-spacing:.05em;
           text-transform:uppercase;color:var(--soft);margin-top:3px}
   /* One "wear this / not this" strip, shared by hair, metals and prints. Every
@@ -377,16 +382,45 @@
   .ds-row figure.tile span{border-radius:5px}
   .ds-row figcaption{font-size:9.5px;line-height:1.24;letter-spacing:.04em;
           text-transform:uppercase;color:var(--soft);margin-top:5px}
+  .dirstrip:last-child{margin-bottom:4px}
+  /* Every component around these steps down at 480/430; without matching rules
+     the fixed 60px/52px figure boxes were the widest thing in the card on a
+     small phone, and long captions ("MUSHROOM BRUNETTE") had no room to sit. */
+  @media(max-width:480px){
+    .lay{gap:7px}.lay figure{width:47px}.lay svg{width:38px;height:38px}
+    .ds-row{gap:9px}.ds-row figure{width:54px}
+    .ds-row figure span{width:40px;height:40px}
+  }
+  @media(max-width:430px){
+    .lay{gap:6px}.lay figure{width:43px}.lay svg{width:35px;height:35px}
+    .lay figcaption{font-size:8.5px;letter-spacing:.03em}
+    .ds-row{gap:8px}.ds-row figure{width:50px}
+    .ds-row figure span{width:37px;height:37px}
+    .ds-row figcaption{font-size:8.5px;letter-spacing:.03em}
+  }
   /* struck through, not merely faded — at a glance the reader must not mistake
      a "turn down" tone for one to ask for */
   /* only lightly muted: at .55 platinum, ash and mushroom washed into three
      identical greys, which defeats showing them at all. The strike does the
      work of saying no; the swatch still has to be recognisable. */
   .ds-row figure.no span{position:relative;opacity:.85}
+  /* The strike was drawn in ink at 72% and vanished on every dark swatch —
+     blue-black, espresso, jet, gunmetal — which is 42 of the 55 avoid chips in
+     the system. On those the "turn down" row was indistinguishable from "ask
+     for", i.e. the advice inverted. mix-blend-mode:difference against white
+     inverts whatever is underneath, so the line is dark on pale tones and pale
+     on dark ones. The white outline beneath it is the fallback for engines
+     without blend support, and still reads on mid tones. */
   .ds-row figure.no span::after{content:"";position:absolute;inset:-1px;border-radius:inherit;
-          background:linear-gradient(to bottom right,transparent calc(50% - 1px),
-          rgba(43,33,41,.72) calc(50% - 1px),rgba(43,33,41,.72) calc(50% + 1px),
-          transparent calc(50% + 1px))}
+          background:linear-gradient(to bottom right,transparent calc(50% - 1.6px),
+          rgba(255,255,255,.9) calc(50% - 1.6px),rgba(255,255,255,.9) calc(50% + 1.6px),
+          transparent calc(50% + 1.6px))}
+  @supports (mix-blend-mode:difference){
+    .ds-row figure.no span::after{mix-blend-mode:difference;
+          background:linear-gradient(to bottom right,transparent calc(50% - 1.3px),
+          #fff calc(50% - 1.3px),#fff calc(50% + 1.3px),
+          transparent calc(50% + 1.3px))}
+  }
   .ds-row figure.no figcaption{opacity:.72}
   .unlocked-note{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--accent);font-weight:600;font-size:13.5px;letter-spacing:.04em;margin-bottom:4px}
   .unlocked-note svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -909,7 +943,7 @@ and with no disclosure shown. --></noscript>
       <p class="fineprint"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg> Analyzed in your browser, on your phone. Never uploaded, never stored — never seen by anyone, including us.</p>
     </div>
     <button class="backlink" type="button" style="display:block;margin:18px auto 0" onclick="runQuizOnly()">No selfie right now? Estimate my season from my answers →</button>
-    <button class="backlink" onclick="show('quiz')">← Back to questions</button>
+    <button class="backlink" onclick="backToQuiz()">← Back to questions</button>
   </div>
 </section>
 
@@ -1260,6 +1294,20 @@ function quizBack(){
   if(st.i===0)return;
   st.i--;
   renderQ();
+}
+/* The capture screen's "back to questions" used to be a bare show('quiz'). By
+   the time anyone is on capture the quiz is finished, so st.i === QUIZ.length,
+   and show('quiz') paints the last question WITHOUT re-rendering — leaving live
+   option buttons wired to pick(). Answering one ran QUIZ[st.i] with st.i out of
+   range and threw, stranding the user on a dead screen with no navigation and
+   no error. Reachable on the bad-light retry path before this branch; the
+   borderline retake made it easy to hit. Step back onto a real question and
+   re-render, so the buttons mean what they show. */
+function backToQuiz(){
+  if(st.i>=QUIZ.length)st.i=QUIZ.length-1;
+  if(st.i<0)st.i=0;
+  renderQ();
+  show('quiz');
 }
 
 /* ---- analysis ---- */
@@ -2192,7 +2240,12 @@ function render(season){
     const warmName=primWarm?season:sis, coolName=primWarm?sis:season;
     sn.innerHTML=`<b>You're right on the line — between ${season} and ${sis}.</b>`
       +`<span>Your undertone read close to neutral — the one axis a single selfie is least sure of. These two share your depth and clarity and part only on warmth. To settle it, hold gold then silver to your bare face in daylight: if gold makes your skin glow, you lean ${warmName}; if silver looks cleaner, ${coolName}. Your report is built for ${season}, the closer of the two.</span>`
-      +`<button type="button" class="retake" onclick="retakeSelfie()">${lastPhotoRead?'Retake your selfie in daylight — it may settle this →':'Add a daylight selfie — it settles the undertone →'}</button>`;
+      /* NOT offered once the report is paid for. Re-running the analysis
+         recomputes currentSeason, which would silently replace the season the
+         buyer actually bought — and would also hand out all 12 reports for one
+         payment, one tap at a time. An unpaid visitor has nothing to lose by
+         reshooting, which is the whole point of the affordance. */
+      +(isUnlocked?'':`<button type="button" class="retake" onclick="retakeSelfie()">${lastPhotoRead?'Retake your selfie in daylight — it may settle this →':'Add a daylight selfie — it settles the undertone →'}</button>`);
     sn.hidden=false;
   }else sn.hidden=true;
   /* the tones the engine measured — the receipt behind the verdict */
@@ -2430,14 +2483,19 @@ const PRINT_DIRECTION={
  'True Spring':{wear:['floral','stripe','botanical'],avoid:['wash']},
  'Bright Spring':{wear:['floral','geo','stripe'],avoid:['wash']},
  'Light Summer':{wear:['wash','stripe','floral'],avoid:['geo']},
- 'True Summer':{wear:['wash','stripe','geo'],avoid:['geo']},
+ /* prose praises "soft geometrics" AND forbids "hard graphic black-and-white".
+    The geo tile is hard-edged by construction, so it cannot depict the soft
+    version — showing it on both rows just looked like a contradiction. */
+ 'True Summer':{wear:['wash','stripe','floral'],avoid:['geo']},
  'Soft Summer':{wear:['wash','floral','stripe'],avoid:['geo']},
  'Soft Autumn':{wear:['wash','paisley','animal'],avoid:['geo']},
  'True Autumn':{wear:['animal','paisley','botanical'],avoid:['geo']},
  'Deep Autumn':{wear:['animal','paisley','floral'],avoid:['geo']},
  'Deep Winter':{wear:['stripe','geo','floral'],avoid:['wash']},
  'True Winter':{wear:['geo','stripe','floral'],avoid:['wash']},
- 'Bright Winter':{wear:['geo','stripe','dot'],avoid:['wash']}
+ /* was ['geo','stripe','dot'] — but this season's own prose says to "walk past
+    anything watercolor, faded or ditsy", and a dot tile IS ditsy. */
+ 'Bright Winter':{wear:['geo','stripe'],avoid:['wash']}
 };
 /* 24x24 repeating-motif tiles. c = [ground, figure, accent]. */
 const PRINT_SVG={
