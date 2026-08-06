@@ -361,29 +361,33 @@
           stroke-width:1.1;stroke-linejoin:round;vector-effect:non-scaling-stroke}
   .lay figcaption{font-size:9.5px;line-height:1.25;letter-spacing:.05em;
           text-transform:uppercase;color:var(--soft);margin-top:3px}
-  /* hair: the colorist strip. "Ask for" and "Turn down" are the two things a
-     colorist actually needs, so they are the two rows. */
-  .hairdir{margin-top:16px;padding-top:14px;border-top:1px solid rgba(43,33,41,.12)}
-  .hd-label{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+  /* One "wear this / not this" strip, shared by hair, metals and prints. Every
+     one of those three is the same shape of advice — a short list to ask for
+     and a short list to refuse — so they get one component, not three. */
+  .dirstrip{margin-top:16px;padding-top:14px;border-top:1px solid rgba(43,33,41,.12)}
+  .ds-label{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
           font-weight:600;color:var(--accent);margin:0 0 7px}
-  .hd-label.hd-no{color:var(--soft);margin-top:14px}
-  .hd-row{display:flex;flex-wrap:wrap;gap:12px}
-  .hd-row figure{margin:0;width:60px;text-align:center}
-  .hd-row figure span{display:block;width:44px;height:44px;margin:0 auto;border-radius:50%;
-          border:1px solid rgba(43,33,41,.14)}
-  .hd-row figcaption{font-size:9.5px;line-height:1.24;letter-spacing:.04em;
+  .ds-label.ds-no{color:var(--soft);margin-top:14px}
+  .ds-row{display:flex;flex-wrap:wrap;gap:12px}
+  .ds-row figure{margin:0;width:60px;text-align:center}
+  .ds-row figure span{display:block;width:44px;height:44px;margin:0 auto;border-radius:50%;
+          border:1px solid rgba(43,33,41,.14);overflow:hidden}
+  .ds-row figure span svg{width:100%;height:100%;display:block}
+  /* print tiles are squares — a repeating pattern reads wrong as a dot */
+  .ds-row figure.tile span{border-radius:5px}
+  .ds-row figcaption{font-size:9.5px;line-height:1.24;letter-spacing:.04em;
           text-transform:uppercase;color:var(--soft);margin-top:5px}
   /* struck through, not merely faded — at a glance the reader must not mistake
      a "turn down" tone for one to ask for */
   /* only lightly muted: at .55 platinum, ash and mushroom washed into three
      identical greys, which defeats showing them at all. The strike does the
      work of saying no; the swatch still has to be recognisable. */
-  .hd-row figure.no span{position:relative;opacity:.85}
-  .hd-row figure.no span::after{content:"";position:absolute;inset:-1px;border-radius:50%;
+  .ds-row figure.no span{position:relative;opacity:.85}
+  .ds-row figure.no span::after{content:"";position:absolute;inset:-1px;border-radius:inherit;
           background:linear-gradient(to bottom right,transparent calc(50% - 1px),
           rgba(43,33,41,.72) calc(50% - 1px),rgba(43,33,41,.72) calc(50% + 1px),
           transparent calc(50% + 1px))}
-  .hd-row figure.no figcaption{opacity:.72}
+  .ds-row figure.no figcaption{opacity:.72}
   .unlocked-note{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--accent);font-weight:600;font-size:13.5px;letter-spacing:.04em;margin-bottom:4px}
   .unlocked-note svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   /* POST-CHECKOUT screen — the buyer has paid but their unlock lives in the
@@ -2385,6 +2389,96 @@ const HAIR_DIRECTION={
  'Bright Winter':{wear:[['Blue-black','#14161c'],['Cold espresso','#38302c'],['Ash-brown','#6b5f55'],['Platinum','#ede7d8'],['Polished grey','#c4c2be']],
    avoid:[['Caramel','#a9682f'],['Honey','#c89043'],['Golden','#c9962f']]}
 };
+/* Metals, same shape and same rule as hair: authored from each season's own
+   wardrobe.metals sentence, never inferred. Gold vs silver is the single most
+   consequential accessory call in the whole system and it inverts exactly on
+   the warm/cool axis, so it is written down rather than guessed. */
+const METAL_HEX={'Yellow gold':'#d4a017','Polished yellow gold':'#e0b93c','Rose gold':'#b76e79',
+ 'Brass':'#b08d57','Brushed brass':'#b08d57','Bronze':'#a97142','Copper':'#b87333',
+ 'Antique gold':'#c5a253','Brushed gold':'#c0a164','Silver':'#c0c0c0','Brushed silver':'#b6b8b9',
+ 'White gold':'#e8e6e1','Platinum':'#e5e4e2','Gunmetal':'#5a5f63','Pewter':'#96999c','Pearl':'#f0eae0'};
+const METAL_DIRECTION={
+ 'Light Spring':{wear:['Yellow gold','Rose gold','Pearl'],avoid:['Silver','Gunmetal']},
+ 'True Spring':{wear:['Yellow gold','Brass','Rose gold'],avoid:['Silver']},
+ 'Bright Spring':{wear:['Polished yellow gold'],avoid:['Silver','Antique gold']},
+ 'Light Summer':{wear:['Silver','White gold','Platinum'],avoid:['Yellow gold']},
+ 'True Summer':{wear:['Silver','White gold','Platinum'],avoid:['Yellow gold','Rose gold']},
+ 'Soft Summer':{wear:['Brushed silver','White gold','Pewter','Pearl'],avoid:['Yellow gold']},
+ 'Soft Autumn':{wear:['Antique gold','Bronze','Copper','Pewter'],avoid:['Silver']},
+ 'True Autumn':{wear:['Yellow gold','Brushed brass','Copper'],avoid:['Silver','Platinum']},
+ 'Deep Autumn':{wear:['Antique gold','Bronze','Brushed gold'],avoid:['Silver']},
+ 'Deep Winter':{wear:['Silver','White gold','Platinum','Gunmetal'],avoid:['Yellow gold']},
+ 'True Winter':{wear:['Silver','Platinum','White gold'],avoid:['Yellow gold']},
+ 'Bright Winter':{wear:['Silver','Platinum','White gold','Gunmetal'],avoid:['Yellow gold']}
+};
+/* Print motifs, drawn as repeating tiles in the season's OWN palette so a
+   "tonal paisley" for Soft Autumn and one for True Winter are visibly different
+   objects. Avoided motifs are drawn in what the copy actually warns against —
+   stark black-and-white, or washed-out muddle — because that contrast IS the
+   point being made. */
+const PRINT_LABEL={stripe:'Stripes',floral:'Florals',dot:'Dots',geo:'Geometrics',
+ animal:'Animal',paisley:'Paisley',botanical:'Botanicals',wash:'Watercolor'};
+/* A motif can appear on BOTH rows and that is not a contradiction: True Summer
+   is told to choose "soft geometrics in low contrast" and to refuse "hard
+   graphic black-and-white". Same shape, opposite execution — so the avoided
+   tile is drawn in the palette being warned about and labelled for what it
+   actually is, or the two rows would read as the report arguing with itself. */
+const PRINT_LABEL_BAD={geo:'Stark b&w',wash:'Faded / muddy'};
+function printLabel(key,bad){return (bad&&PRINT_LABEL_BAD[key])||PRINT_LABEL[key]||key;}
+const PRINT_DIRECTION={
+ 'Light Spring':{wear:['floral','stripe','dot'],avoid:['geo']},
+ 'True Spring':{wear:['floral','stripe','botanical'],avoid:['wash']},
+ 'Bright Spring':{wear:['floral','geo','stripe'],avoid:['wash']},
+ 'Light Summer':{wear:['wash','stripe','floral'],avoid:['geo']},
+ 'True Summer':{wear:['wash','stripe','geo'],avoid:['geo']},
+ 'Soft Summer':{wear:['wash','floral','stripe'],avoid:['geo']},
+ 'Soft Autumn':{wear:['wash','paisley','animal'],avoid:['geo']},
+ 'True Autumn':{wear:['animal','paisley','botanical'],avoid:['geo']},
+ 'Deep Autumn':{wear:['animal','paisley','floral'],avoid:['geo']},
+ 'Deep Winter':{wear:['stripe','geo','floral'],avoid:['wash']},
+ 'True Winter':{wear:['geo','stripe','floral'],avoid:['wash']},
+ 'Bright Winter':{wear:['geo','stripe','dot'],avoid:['wash']}
+};
+/* 24x24 repeating-motif tiles. c = [ground, figure, accent]. */
+const PRINT_SVG={
+ stripe:c=>`<rect width="24" height="24" fill="${c[0]}"/><rect x="3" width="3.4" height="24" fill="${c[1]}"/><rect x="10.3" width="3.4" height="24" fill="${c[2]}"/><rect x="17.6" width="3.4" height="24" fill="${c[1]}"/>`,
+ dot:c=>`<rect width="24" height="24" fill="${c[0]}"/>`+[[6,6],[18,6],[6,18],[18,18],[12,12]].map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="2.7" fill="${i%2?c[2]:c[1]}"/>`).join(''),
+ floral:c=>`<rect width="24" height="24" fill="${c[0]}"/>`+[[7,7],[17,17]].map(p=>
+   [0,1,2,3,4].map(k=>`<circle cx="${(p[0]+3.6*Math.cos(k*1.2566)).toFixed(2)}" cy="${(p[1]+3.6*Math.sin(k*1.2566)).toFixed(2)}" r="2.5" fill="${c[1]}"/>`).join('')
+   +`<circle cx="${p[0]}" cy="${p[1]}" r="1.9" fill="${c[2]}"/>`).join(''),
+ geo:c=>`<rect width="24" height="24" fill="${c[0]}"/><path d="M0 24 6 9l6 15Z" fill="${c[1]}"/><path d="M12 24 18 9l6 15Z" fill="${c[1]}"/><path d="M6 9 12 0h-12Z" fill="${c[2]}"/><path d="M18 9 24 0h-12Z" fill="${c[2]}"/>`,
+ animal:c=>`<rect width="24" height="24" fill="${c[0]}"/>`+[[6,5,1.1],[16,8,-.6],[9,15,.5],[19,18,1.3],[3,20,-.9]].map(p=>
+   `<g transform="translate(${p[0]} ${p[1]}) rotate(${(p[2]*30).toFixed(0)})"><ellipse rx="3.4" ry="2.5" fill="none" stroke="${c[2]}" stroke-width="2.1"/><ellipse rx="1.5" ry="1.1" fill="${c[1]}"/></g>`).join(''),
+ paisley:c=>`<rect width="24" height="24" fill="${c[0]}"/>`+[[6,6,1],[17,16,1]].map(p=>
+   `<g transform="translate(${p[0]} ${p[1]}) scale(${p[2]})"><path d="M-3.8 5C-7 1.6-5.2-4 .4-4.8 5-5.4 7 -1.4 4.2 1.4 2.4 3.2-.4 2.4-.4.5" fill="none" stroke="${c[1]}" stroke-width="2.2" stroke-linecap="round"/></g>`).join(''),
+ botanical:c=>`<rect width="24" height="24" fill="${c[0]}"/>`+[[6,6,20],[17,15,-30],[7,18,-70]].map(p=>
+   `<g transform="translate(${p[0]} ${p[1]}) rotate(${p[2]})"><path d="M0-5.4C3.4-2.6 3.4 2.6 0 5.4-3.4 2.6-3.4-2.6 0-5.4Z" fill="${c[1]}"/><path d="M0-5.4V5.4" stroke="${c[2]}" stroke-width=".9"/></g>`).join(''),
+ wash:c=>`<rect width="24" height="24" fill="${c[0]}"/>`+[[7,8,7],[17,7,6],[9,18,6.5],[19,17,5.5]].map((p,i)=>
+   `<circle cx="${p[0]}" cy="${p[1]}" r="${p[2]}" fill="${i%2?c[1]:c[2]}" opacity=".5"/>`).join('')
+};
+/* Ground/figure/accent for a season's own prints, and the deliberately wrong
+   palettes for the two things the copy warns about. */
+/* Taking palette[0] and palette[3] gave True Autumn three warm tans and the
+   motif vanished into its own ground. Pick for SEPARATION instead: the lightest
+   shade as ground, the most chromatic as the figure, and a distinctly deeper
+   one as accent — the tile has to survive being 44px wide. */
+function printColors(det,key,bad){
+  if(bad) return key==='geo' ? ['#ffffff','#141414','#141414']       /* stark black-and-white */
+                             : ['#e6e2dc','#c9c3bb','#d5cfc7'];      /* faded, watercolor-muddy */
+  const all=[].concat(det.wardrobe&&det.wardrobe.neutrals||[], det.palette||[])
+              .filter(c=>c&&/^#[0-9a-f]{6}$/i.test(c.hex));
+  if(!all.length) return ['#eee','#888','#555'];
+  const rgb=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+  const lum=h=>{const c=rgb(h);return (.299*c[0]+.587*c[1]+.114*c[2])/255;};
+  const chroma=h=>{const c=rgb(h);return (Math.max.apply(0,c)-Math.min.apply(0,c))/255;};
+  const byLum=all.slice().sort((a,b)=>lum(b.hex)-lum(a.hex));
+  const ground=byLum[0].hex;
+  const figure=all.slice().sort((a,b)=>chroma(b.hex)-chroma(a.hex))[0].hex;
+  /* accent: the darkest shade that is not already the figure, so three-colour
+     motifs (animal, botanical) keep a readable third tone */
+  const accent=(byLum.filter(c=>c.hex!==figure).slice(-1)[0]||byLum.slice(-1)[0]).hex;
+  return [ground,figure,accent];
+}
 /* Guard: every tone named above must appear in that season's shipped hair copy.
    Returns the offenders, so a season whose prose is rewritten fails loudly
    instead of quietly contradicting the paragraph beside it. */
@@ -2398,6 +2492,25 @@ function hairDirectionAudit(){
     }));
   }
   return bad;
+}
+/* Same guard for metals: every metal named must appear in that season's own
+   wardrobe.metals sentence, and must have a hex. */
+function metalDirectionAudit(){
+  const bad=[];
+  for(const [season,dir] of Object.entries(METAL_DIRECTION)){
+    const det=SEASON_DETAILS[season]||{};
+    const prose=((det.wardrobe||{}).metals||'').toLowerCase().replace(/[^a-z]+/g,' ');
+    ['wear','avoid'].forEach(k=>(dir[k]||[]).forEach(name=>{
+      if(!METAL_HEX[name]) bad.push(season+' / '+k+' / NO HEX / '+name);
+      const head=name.toLowerCase().split(' ')[0];
+      if(prose.indexOf(head)<0) bad.push(season+' / '+k+' / not in copy / '+name);
+    }));
+  }
+  return bad;
+}
+function reportDirectionAudit(){
+  return {hair:hairDirectionAudit(), metals:metalDirectionAudit(),
+    seasonsMissing:Object.keys(SEASON_DETAILS).filter(s=>!HAIR_DIRECTION[s]||!METAL_DIRECTION[s]||!PRINT_DIRECTION[s])};
 }
 function comboChips(text,det){
   const idx=[].concat(det.wardrobe&&det.wardrobe.neutrals||[], det.palette||[],
@@ -2455,16 +2568,26 @@ function applyUnlocked(){
       ${(()=>{const d=HAIR_DIRECTION[currentSeason]; if(!d) return '';
         const row=(list,cls)=>list.map(([n,h])=>
           `<figure class="${cls}"><span style="background:${h}"></span><figcaption>${n}</figcaption></figure>`).join('');
-        return `<div class="hairdir">`
-          +`<div class="hd-label">Ask for</div><div class="hd-row">${row(d.wear,'')}</div>`
-          +`<div class="hd-label hd-no">Turn down</div><div class="hd-row">${row(d.avoid,'no')}</div>`
+        return `<div class="dirstrip">`
+          +`<div class="ds-label">Ask for</div><div class="ds-row">${row(d.wear,'')}</div>`
+          +`<div class="ds-label ds-no">Turn down</div><div class="ds-row">${row(d.avoid,'no')}</div>`
           +`</div>`;})()}
     </div>
     <div class="report-card">
       <h4 class="serif">Your wardrobe system</h4>
       <div class="rc-sub">Neutrals, metals and combinations that always work.</div>
       <p><b>Metals.</b> ${det.wardrobe.metals}</p>
-      <p><b>Prints.</b> ${det.wardrobe.prints}</p>
+      ${(()=>{const d=METAL_DIRECTION[currentSeason]; if(!d) return '';
+        const row=(list,cls)=>list.map(n=>
+          `<figure class="${cls}"><span style="background:${METAL_HEX[n]||'#ccc'}"></span><figcaption>${n}</figcaption></figure>`).join('');
+        return `<div class="dirstrip"><div class="ds-label">Wear</div><div class="ds-row">${row(d.wear,'')}</div>`
+          +`<div class="ds-label ds-no">Leave</div><div class="ds-row">${row(d.avoid,'no')}</div></div>`;})()}
+      <p style="margin-top:16px"><b>Prints.</b> ${det.wardrobe.prints}</p>
+      ${(()=>{const d=PRINT_DIRECTION[currentSeason]; if(!d) return '';
+        const tile=(k,bad)=>`<figure class="tile${bad?' no':''}"><span><svg viewBox="0 0 24 24" role="img" aria-label="${printLabel(k,bad)}">${PRINT_SVG[k](printColors(det,k,bad))}</svg></span>`
+          +`<figcaption>${printLabel(k,bad)}</figcaption></figure>`;
+        return `<div class="dirstrip"><div class="ds-label">Wear</div><div class="ds-row">${d.wear.map(k=>tile(k,false)).join('')}</div>`
+          +`<div class="ds-label ds-no">Leave</div><div class="ds-row">${d.avoid.map(k=>tile(k,true)).join('')}</div></div>`;})()}
       <p style="margin-bottom:2px"><b>Three combinations to steal</b></p>
       ${det.wardrobe.combos.map((c,i)=>{
         const parts=String(c).split('+').map(s=>s.trim()), cols=comboChips(c,det);
