@@ -341,14 +341,12 @@
   .combo{display:flex;gap:14px;align-items:baseline;padding:9px 0}
   .combo .n{font-family:"Bodoni Moda";font-style:italic;color:var(--accent);font-size:17px;flex:0 0 18px}
   .combo p{margin:0;font-size:15px}
-  /* Every season carries five named neutrals and the sales copy sells "your
-     neutrals" by name — but nothing rendered them, so the buyer paid for a
-     section that silently did not exist. */
-  .neutral-tray{display:flex;margin:8px 0 6px;border-radius:4px;overflow:hidden;border:1px solid rgba(43,33,41,.10)}
-  .neutral-tray i{flex:1;height:36px;display:block}
-  .neutral-names{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 2px;font-size:11.5px;letter-spacing:.02em;color:var(--soft)}
   /* A combination you can SEE beats one you have to picture. The colors named
-     in each combo already exist in this season's own data. */
+     in each combo already exist in this season's own data.
+     NB: wardrobe.neutrals is deliberately NOT drawn here — the Compact "Colors
+     to wear" card already renders those same five shades, larger and named,
+     under "these replace black & white". Drawing them again put the identical
+     tray twice in one report. */
   .combo{align-items:flex-start}
   .combo-body{flex:1;min-width:0}
   .combo-chips{display:flex;gap:5px;margin:1px 0 6px}
@@ -2302,10 +2300,6 @@ function applyUnlocked(){
     <div class="report-card">
       <h4 class="serif">Your wardrobe system</h4>
       <div class="rc-sub">Neutrals, metals and combinations that always work.</div>
-      ${(det.wardrobe.neutrals&&det.wardrobe.neutrals.length)?`
-      <p style="margin-bottom:2px"><b>Your neutrals.</b> The base everything else is built on.</p>
-      <div class="neutral-tray">${det.wardrobe.neutrals.map(n=>`<i style="background:${n.hex}" title="${n.name}"></i>`).join('')}</div>
-      <div class="neutral-names">${det.wardrobe.neutrals.map(n=>`<span>${n.name}</span>`).join('')}</div>`:''}
       <p><b>Metals.</b> ${det.wardrobe.metals}</p>
       <p><b>Prints.</b> ${det.wardrobe.prints}</p>
       <p style="margin-bottom:2px"><b>Three combinations to steal</b></p>
