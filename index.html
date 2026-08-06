@@ -336,6 +336,24 @@
   .combo p{margin:0;font-size:15px}
   .unlocked-note{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--accent);font-weight:600;font-size:13.5px;letter-spacing:.04em;margin-bottom:4px}
   .unlocked-note svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  /* POST-CHECKOUT screen — the buyer has paid but their unlock lives in the
+     email, so this has to read as success and route them to the inbox. */
+  .paid-mark{width:54px;height:54px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+  .paid-mark svg{width:26px;height:26px;fill:none;stroke:#fff9f4;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  #purchased .stage{text-align:center;max-width:620px;margin:0 auto;padding:52px 20px 72px}
+  /* max-width + balance keeps the headline from orphaning a word on narrow
+     screens, where this is the first thing a buyer sees after paying */
+  #purchased h2{font-size:clamp(26px,4.6vw,40px);line-height:1.12;margin:10px auto 14px;max-width:13ch;text-wrap:balance}
+  @media(min-width:560px){#purchased h2{max-width:20ch}}
+  .paid-lede{margin:0 auto 26px;max-width:520px}
+  .paid-card{text-align:left;background:var(--card);border:1px solid var(--line);border-radius:3px;padding:6px 20px;margin:0 auto 22px;max-width:520px}
+  .paid-row{display:flex;gap:14px;align-items:flex-start;padding:16px 0;border-bottom:1px solid var(--line);font:400 14.5px/1.55 Georgia,serif;color:var(--ink)}
+  .paid-row:last-child{border-bottom:0}
+  .paid-num{flex:0 0 22px;height:22px;border-radius:50%;background:var(--porcelain);border:1px solid var(--line);
+    font:600 11px/22px Arial,sans-serif;text-align:center;color:var(--soft);margin-top:1px}
+  .paid-sub{display:block;color:var(--soft);font-size:13px;line-height:1.5;margin-top:4px}
+  .paid-foot{font:400 13px/1.6 Arial,sans-serif;color:var(--soft);max-width:480px;margin:0 auto 20px}
+  .paid-foot a{color:var(--soft)}
   .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff9f4;
     padding:13px 22px;border-radius:2px;font-size:14px;font-weight:500;box-shadow:var(--shadow);opacity:0;pointer-events:none;
     transition:opacity .3s,transform .3s;z-index:80;max-width:88vw;text-align:center}
@@ -805,6 +823,33 @@ and with no disclosure shown. --></noscript>
     </div>
     <h2 class="serif">Reading your colors…</h2>
     <div class="step" id="stepText" role="status" aria-live="polite">Checking your light</div>
+  </div>
+</section>
+
+<!-- POST-CHECKOUT — shown when the buyer returns from Stripe but the unlock has
+     not been proved yet. Their report link lives in the email, so this screen's
+     only job is to get them into their inbox and set expectations about WHERE
+     the mail lands: the first real test purchase went to Gmail's Promotions tab,
+     which reads as "I paid and got nothing" if the site says nothing. -->
+<section class="screen" id="purchased">
+  <div class="wrap stage">
+    <div class="paid-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M4.5 12.5l5 5L19.5 7"/></svg>
+    </div>
+    <span class="eyebrow">Payment received</span>
+    <h2 class="serif">Your report is on its way to your inbox.</h2>
+    <p class="lede paid-lede">We just emailed your full report to <b id="paidEmail">the address you used at checkout</b>. It arrives within a minute, and it is yours permanently — on this device and any other.</p>
+
+    <div class="paid-card">
+      <div class="paid-row"><span class="paid-num">1</span><div>Open the email from <b>report@huebloom.app</b><span class="paid-sub">Subject: “Your&nbsp;<i>season</i>&nbsp;report — every color, yours forever”</span></div></div>
+      <div class="paid-row"><span class="paid-num">2</span><div><b>Not in your inbox? Check Promotions, then Spam.</b><span class="paid-sub">Gmail files a first email from a new sender under <b>Promotions</b> more often than not, and Outlook may route it to <b>Junk</b>. Moving it to your inbox once fixes it for good.</span></div></div>
+      <div class="paid-row"><span class="paid-num">3</span><div>Tap <b>Open your full report</b> inside it<span class="paid-sub">That unlocks this site permanently, on whichever device you open it on.</span></div></div>
+    </div>
+
+    <p class="paid-foot">Still nothing after a few minutes? Reply to your Stripe receipt and we will resend it — or email <a href="mailto:sampetersen909@gmail.com">sampetersen909@gmail.com</a>.</p>
+    <div class="cta-row" style="justify-content:center">
+      <button class="btn btn-ghost" onclick="show('intro')">Back to HUE</button>
+    </div>
   </div>
 </section>
 
@@ -2347,6 +2392,14 @@ buildDecks();
     else{applyUnlocked&&applyUnlocked();toast('Unlocked — take the two-minute quiz to reveal your full report.');}
   }
 
+  /* Someone who just paid must never be left looking at a paywall with only a
+     toast to explain it — that reads as "I paid and got nothing". Send them to
+     the #purchased screen, which tells them exactly where the mail landed. */
+  function showPurchased(email){
+    if(email){const el=$('paidEmail');if(el)el.textContent=email;}
+    show('purchased');
+  }
+
   if(unlockToken){
     fetch(WORKER+'/verify?t='+encodeURIComponent(unlockToken))
       .then(r=>r.ok?r.json():null)
@@ -2354,19 +2407,24 @@ buildDecks();
                  else toast('That report link is not valid. Reply to your receipt and we will resend it.'); })
       .catch(()=>toast('Could not reach the server to open your report. Please try again in a moment.'));
   }else if(sessionId){
+    /* Paint the confirmation immediately — the lookup below may take a moment,
+       and a blank paywall in the meantime is the worst thing to show a buyer. */
+    showPurchased();
     fetch(WORKER+'/session?sid='+encodeURIComponent(sessionId))
       .then(r=>r.json().then(j=>({status:r.status,j})))
       .then(({status,j})=>{
+        /* Verified paid: skip the inbox detour entirely and just open it. */
         if(j&&j.ok&&j.token)grantUnlock(j.token,j.season);
         /* 501 = STRIPE_API_KEY not set on the worker. The purchase is real and
-           the emailed link still works, so say that rather than implying failure. */
-        else if(status===501)toast('Payment received — your report link is on its way to your email.');
-        else toast('Payment received — check your email for the link to your report.');
+           the emailed link still works, so the #purchased screen is correct. */
+        else if(j&&j.email)showPurchased(j.email);
       })
-      .catch(()=>toast('Payment received — check your email for the link to your report.'));
+      .catch(()=>{});
   }else if(legacyUnlock){
-    /* Someone followed an old ?unlocked=1 link, or typed it. Never unlocks. */
-    toast('Open your report from the link in your email — that link is unique to you.');
+    /* The Stripe success URL still points here, and old report emails carry it.
+       It never unlocks — but the person may well have just paid, so show them
+       the confirmation rather than a bare paywall. */
+    showPurchased();
   }
 })();
 </script>

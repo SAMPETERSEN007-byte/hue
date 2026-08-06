@@ -189,6 +189,13 @@ function renderEmail(season, unlockUrl) {
       <div style="font:400 42px/1.05 Georgia,serif;color:${INK};margin:10px 0 8px">${esc(season)}</div>
       <div style="font:400 15.5px/1.6 Georgia,serif;color:${SOFT}">${esc(S.desc)}</div>
 
+      <!-- Primary action FIRST. The full report is below as the permanent copy,
+           but the site is the better experience, so lead with the way in. -->
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0 6px"><tr><td style="background:${INK};border-radius:2px">
+        <a href="${unlockUrl}" style="display:inline-block;padding:14px 26px;font:600 14px Arial,sans-serif;color:#fff9f4;text-decoration:none">Open your full report on the site</a>
+      </td></tr></table>
+      <div style="font:400 12px/1.5 Arial,sans-serif;color:${SOFT};margin-bottom:4px">Unlocks HUE permanently on whichever device you open it on. Your whole report is also written out below — this email is your permanent copy.</div>
+
       ${h2('Your power colors')}
       ${chipRow(power)}
 
@@ -302,7 +309,10 @@ export default {
       /* Only a genuinely paid session mints a token. */
       if (s.payment_status !== 'paid') return json({ ok: false, reason: 'not-paid' }, 403);
       const season = seasonFromRef((s.client_reference_id || '').toLowerCase());
-      return json({ ok: true, season: season || null, token: await mintUnlockToken(env, s.id, season) }, 200);
+      /* The buyer's own address, echoed back so the confirmation screen can name
+         the inbox to go looking in. Only ever their own — never anyone else's. */
+      const paidEmail = (s.customer_details && s.customer_details.email) || null;
+      return json({ ok: true, season: season || null, email: paidEmail, token: await mintUnlockToken(env, s.id, season) }, 200);
     }
 
     if (request.method !== 'POST') return new Response('hue-report-mailer', { status: 200 });
