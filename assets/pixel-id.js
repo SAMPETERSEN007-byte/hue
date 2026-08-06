@@ -26,5 +26,13 @@
    disclosure would make the policy false. Because both read this one value,
    they cannot diverge: there is no way to ship the pixel silently.
 
-   The ID is a 15-16 digit number. Anything else is treated as "off". */
+   The ID is a 15-16 digit number. Anything else is treated as "off".
+
+   ⚠️ The pixel ID is NOT the ad account ID. Both are 15-16 digits, so this file
+   cannot tell them apart and neither can the regex in index.html — paste the ad
+   account id here and the pixel initialises against a dataset that does not
+   exist, collecting nothing, silently, while the site's privacy copy flips to
+   say it IS tracking. Get the value from Events Manager > Datasets > your
+   dataset (NOT the account selector at the top right, which shows the ad
+   account). Verify with the Meta Pixel Helper extension before trusting it. */
 window.HUE_META_PIXEL_ID = '';
