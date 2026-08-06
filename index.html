@@ -509,7 +509,23 @@ posthog.init(window.HUE_PH_KEY,{api_host:window.HUE_PH_HOST,defaults:'2026-05-30
    did the reverse. Attribution is the only instrument on the outreach push, so
    both ends must agree. Change this in one place or not at all. */
 window.HUE_VIA_RE=/^[a-z0-9_-]{1,24}$/i;
-window.readVia=function(){var v=(new URLSearchParams(location.search).get('via')||'');return window.HUE_VIA_RE.test(v)?v.toLowerCase():'';};
+/* Explicit ?via= wins. Failing that, fall back to the parameters ad platforms
+   actually append, so a click that arrives without ?via is still attributable
+   instead of silently reporting as "direct" — which is what every Meta click
+   would otherwise do, since Meta appends ?fbclid and never ?via.
+   The result is folded into the Stripe client_reference_id, so it must satisfy
+   HUE_VIA_RE; utm_source is sanitised rather than trusted. */
+window.readVia=function(){
+  var p=new URLSearchParams(location.search);
+  var v=p.get('via')||'';
+  if(window.HUE_VIA_RE.test(v))return v.toLowerCase();
+  var u=(p.get('utm_source')||'').toLowerCase().replace(/[^a-z0-9_-]/g,'').slice(0,24);
+  if(u)return u;
+  if(p.get('fbclid'))return 'meta';      /* Facebook or Instagram ad click */
+  if(p.get('gclid'))return 'google';
+  if(p.get('ttclid'))return 'tiktok';
+  return '';
+};
 (function(){var v=window.readVia();if(v)posthog.register({via:v});})();
 </script>
 <script src="assets/pixel-id.js"></script>
@@ -2329,16 +2345,12 @@ buildDecks();
 
      Counted only on ?sid= — a real, unguessable Stripe session id. A bare
      ?unlocked=1 is typeable by anyone and must never register as revenue. */
-  var firstUnlock=false;
-  if(sessionId){
-    try{firstUnlock=localStorage.getItem('hue_purchase_counted')!=='1'}catch(e){firstUnlock=true}
-    if(firstUnlock){
-      try{localStorage.setItem('hue_purchase_counted','1')}catch(e){}
-      track('purchase_completed',{via:channel||'direct',season:(saved&&saved.season)||null,px:PRICE_CENTS});
-      /* Meta gets value + currency only — never the season. */
-      fbtrack('Purchase',{value:PRICE_CENTS/100,currency:'USD'});
-    }
-  }
+  /* The conversion is now reported from reportPurchase(), called by whichever
+     proof actually arrives — a worker-verified token or a worker-confirmed
+     session. Nothing is counted here, because at this point in the boot nothing
+     has been proved yet. firstUnlock only decides the wording of the toast. */
+  var firstUnlock=true;
+  try{firstUnlock=!(saved&&saved.unlocked&&saved.ut);}catch(e){}
   /* Restore requires a stored TOKEN, not just a stored flag. Anyone who unlocked
      themselves with the old bare URL had {unlocked:true} written to their device;
      requiring `ut` revokes those without touching a real buyer, who re-verifies
@@ -2383,11 +2395,35 @@ buildDecks();
      state. Nothing here can unlock without a 200 from the worker. */
   const WORKER='https://hue-report-mailer.synapse-sam.workers.dev';
 
-  function grantUnlock(token,season){
+  /* Report a paid conversion at most once per Stripe session.
+
+     The only trustworthy proof of payment available to this page is a token the
+     worker has verified, or a session the worker has confirmed paid — never a
+     bare ?unlocked=1, which anyone can type. Both proofs carry the Stripe
+     session id, so that is the dedup key: it is stable across devices, across
+     re-opens of the report email, and across the two code paths that can
+     legitimately report the same sale.
+
+     Meta dedups on event name + eventID for 48h, so passing sid as eventID
+     means the email-link path and the ?sid= return path cannot double-count
+     each other. localStorage covers repeat visits on this device; eventID
+     covers everything else. */
+  function reportPurchase(sid){
+    if(!sid)return;
+    var key='hue_paid_'+sid;
+    try{ if(localStorage.getItem(key)==='1')return; localStorage.setItem(key,'1'); }catch(e){}
+    track('purchase_completed',{via:channel||'direct',px:PRICE_CENTS});
+    /* Meta gets value, currency and the dedup id — never the season. */
+    try{ if(window.fbq&&window.HUE_META_ON)
+      fbq('track','Purchase',{value:PRICE_CENTS/100,currency:'USD'},{eventID:sid}); }catch(e){}
+  }
+
+  function grantUnlock(token,season,sid){
     isUnlocked=true;unlockProof=token;
     const prev=store.load()||{};
     const s=season&&SEASONS[season]?season:(prev.season||null);
     try{localStorage.setItem('hue',JSON.stringify({season:s,unlocked:true,ut:token,via:channel,read:prev.read||null}))}catch(e){}
+    reportPurchase(sid);
     if(s&&SEASONS[s]){render(s);toast('Your '+s+' report is unlocked below.');}
     else{applyUnlocked&&applyUnlocked();toast('Unlocked — take the two-minute quiz to reveal your full report.');}
   }
@@ -2403,7 +2439,7 @@ buildDecks();
   if(unlockToken){
     fetch(WORKER+'/verify?t='+encodeURIComponent(unlockToken))
       .then(r=>r.ok?r.json():null)
-      .then(j=>{ if(j&&j.ok)grantUnlock(unlockToken,j.season);
+      .then(j=>{ if(j&&j.ok)grantUnlock(unlockToken,j.season,j.sid);
                  else toast('That report link is not valid. Reply to your receipt and we will resend it.'); })
       .catch(()=>toast('Could not reach the server to open your report. Please try again in a moment.'));
   }else if(sessionId){
@@ -2413,8 +2449,10 @@ buildDecks();
     fetch(WORKER+'/session?sid='+encodeURIComponent(sessionId))
       .then(r=>r.json().then(j=>({status:r.status,j})))
       .then(({status,j})=>{
-        /* Verified paid: skip the inbox detour entirely and just open it. */
-        if(j&&j.ok&&j.token)grantUnlock(j.token,j.season);
+        /* Verified paid: skip the inbox detour entirely and just open it.
+           sessionId is the same id the emailed token carries, so a buyer who
+           lands here AND later opens the email link is still one conversion. */
+        if(j&&j.ok&&j.token)grantUnlock(j.token,j.season,sessionId);
         /* 501 = STRIPE_API_KEY not set on the worker. The purchase is real and
            the emailed link still works, so the #purchased screen is correct. */
         else if(j&&j.email)showPurchased(j.email);

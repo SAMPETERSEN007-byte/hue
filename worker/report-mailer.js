@@ -226,7 +226,7 @@ function renderEmail(season, unlockUrl) {
     </td></tr>
     <tr><td style="padding:18px 10px;font:400 12px/1.6 Arial,sans-serif;color:${SOFT};text-align:center">
       This email is your permanent copy — one purchase, no subscription.<br>
-      Questions or a refund within 30 days: just reply to this email.<br>
+      Questions or a refund within 30 days: email <a href="mailto:sampetersen909@gmail.com" style="color:${SOFT}">sampetersen909@gmail.com</a>.<br>
       <a href="https://huebloom.app/privacy.html" style="color:${SOFT}">Privacy</a> · <a href="https://huebloom.app/refunds.html" style="color:${SOFT}">Refunds</a>
     </td></tr>
   </table></td></tr></table></body></html>`;
@@ -242,7 +242,7 @@ function renderFallback(unlockUrl) {
     <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto"><tr><td style="background:${INK};border-radius:2px">
       <a href="${unlockUrl}" style="display:inline-block;padding:14px 26px;font:600 14px Arial,sans-serif;color:#fff9f4;text-decoration:none">Open my report</a>
     </td></tr></table>
-    <div style="font:400 12px/1.6 Arial,sans-serif;color:${SOFT};margin-top:22px">Questions or a refund within 30 days: reply to this email.</div>
+    <div style="font:400 12px/1.6 Arial,sans-serif;color:${SOFT};margin-top:22px">Questions or a refund within 30 days: email <a href="mailto:sampetersen909@gmail.com" style="color:${SOFT}">sampetersen909@gmail.com</a>.</div>
   </td></tr></table></td></tr></table></body></html>`;
 }
 
@@ -281,7 +281,15 @@ export default {
     /* ---- entitlement check, called by the site before it unlocks ---- */
     if (url.pathname === '/verify') {
       const claims = await readUnlockToken(env, url.searchParams.get('t') || '');
-      return claims ? json({ ok: true, season: claims.season || null }, 200) : json({ ok: false }, 403);
+      /* sid is returned so the page can report the conversion exactly once. A
+         verified token is server-side proof that this Stripe session was paid,
+         which makes this the one place a Purchase can be counted honestly
+         without a Stripe API key — and the session id is the natural dedup key,
+         so the same sale seen twice (email link, then the ?sid= return path)
+         still counts once. */
+      return claims
+        ? json({ ok: true, season: claims.season || null, sid: claims.sid || null }, 200)
+        : json({ ok: false }, 403);
     }
 
     /* ---- post-checkout return path -------------------------------------
