@@ -35,4 +35,4 @@
    say it IS tracking. Get the value from Events Manager > Datasets > your
    dataset (NOT the account selector at the top right, which shows the ad
    account). Verify with the Meta Pixel Helper extension before trusting it. */
-window.HUE_META_PIXEL_ID = '';
+window.HUE_META_PIXEL_ID = '928398310306386';  /* HueBloom dataset, owned by the Hue business portfolio */
