@@ -58,6 +58,69 @@ function seasonFromRef(ref) {
   return null;
 }
 
+/* ---------- unlock entitlement ----------------------------------------------
+   Before this existed, https://huebloom.app/?unlocked=1 unlocked the full
+   $29.99 report for anyone who typed it -- no payment, no token -- and that same
+   bare URL was the "Open my report" button in every buyer email, so one forward
+   or screenshot published free access permanently.
+
+   Now the worker mints a per-purchase HMAC token at checkout.session.completed
+   and the email links carry ?t=<token>. The page asks /verify before unlocking.
+   A token is unguessable, is bound to one Stripe session, and can be revoked by
+   rotating the key.
+
+   The signing key is DERIVED from STRIPE_WEBHOOK_SECRET rather than being a new
+   secret, so this needs no additional `wrangler secret put` step. The label
+   gives domain separation: the unlock key cannot be used to forge a Stripe
+   signature or vice versa. */
+/* --entitlement-start-- (worker/test-unlock-token.js extracts this exact block;
+   keep the markers or the test fails loudly rather than silently testing nothing) */
+const UNLOCK_LABEL = 'hue-unlock-v1';
+const enc = s => new TextEncoder().encode(s);
+
+const b64url = bytes => btoa(String.fromCharCode(...bytes))
+  .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const b64urlDecode = s => {
+  const pad = s.replace(/-/g, '+').replace(/_/g, '/');
+  return atob(pad + '='.repeat((4 - pad.length % 4) % 4));
+};
+
+async function unlockKey(env) {
+  const base = await crypto.subtle.importKey('raw', enc(env.STRIPE_WEBHOOK_SECRET || ''),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const derived = await crypto.subtle.sign('HMAC', base, enc(UNLOCK_LABEL));
+  return crypto.subtle.importKey('raw', derived, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+}
+
+async function signPayload(env, payload) {
+  const key = await unlockKey(env);
+  return b64url(new Uint8Array(await crypto.subtle.sign('HMAC', key, enc(payload))));
+}
+
+async function mintUnlockToken(env, sessionId, season) {
+  const payload = b64url(enc(JSON.stringify({ v: 1, sid: sessionId || '', season: season || null })));
+  return payload + '.' + await signPayload(env, payload);
+}
+
+/* Returns the decoded claims, or null. Comparison is length-checked and
+   constant-time so a forged signature cannot be discovered byte by byte. */
+async function readUnlockToken(env, token) {
+  if (typeof token !== 'string' || token.length > 2048) return null;
+  const dot = token.lastIndexOf('.');
+  if (dot < 1) return null;
+  const payload = token.slice(0, dot), sig = token.slice(dot + 1);
+  const expect = await signPayload(env, payload);
+  if (sig.length !== expect.length) return null;
+  let diff = 0;
+  for (let i = 0; i < sig.length; i++) diff |= sig.charCodeAt(i) ^ expect.charCodeAt(i);
+  if (diff !== 0) return null;
+  try {
+    const claims = JSON.parse(b64urlDecode(payload));
+    return claims && claims.v === 1 ? claims : null;
+  } catch (e) { return null; }
+}
+/* --entitlement-end-- */
+
 async function verifyStripe(payload, sigHeader, secret) {
   const parts = Object.fromEntries(sigHeader.split(',').map(p => p.split('=')));
   const t = parts.t, v1 = parts.v1;
@@ -97,7 +160,7 @@ function h2(t) {
   return `<div style="font:600 11px/1 Arial,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:${SOFT};margin:30px 0 12px">${esc(t)}</div>`;
 }
 
-function renderEmail(season) {
+function renderEmail(season, unlockUrl) {
   const S = SEASONS[season], D = SEASON_DETAILS[season];
   const power = S.teaser.map(hex => ({ hex, name: hex.toUpperCase() }));
   const palette = D.palette.map(p => ({ hex: p.hex, name: p.name, sub: p.hex.toUpperCase() }));
@@ -150,7 +213,7 @@ function renderEmail(season) {
       ${combos}
 
       <table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px auto 6px"><tr><td style="background:${INK};border-radius:2px">
-        <a href="https://huebloom.app/?unlocked=1" style="display:inline-block;padding:14px 26px;font:600 14px Arial,sans-serif;color:#fff9f4;text-decoration:none">Open your report on any device</a>
+        <a href="${unlockUrl}" style="display:inline-block;padding:14px 26px;font:600 14px Arial,sans-serif;color:#fff9f4;text-decoration:none">Open your report on any device</a>
       </td></tr></table>
       <div style="font:400 12px/1.5 Arial,sans-serif;color:${SOFT};text-align:center">That link activates your unlock on any device — retake the two-minute analysis there and your full report appears.</div>
     </td></tr>
@@ -162,7 +225,7 @@ function renderEmail(season) {
   </table></td></tr></table></body></html>`;
 }
 
-function renderFallback() {
+function renderFallback(unlockUrl) {
   return `<!doctype html><html><body style="margin:0;padding:0;background:${CREAM}">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 12px">
   <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="background:${CARD};border:1px solid ${LINE};border-radius:2px">
@@ -170,7 +233,7 @@ function renderFallback() {
     <div style="font:400 30px Georgia,serif;color:${INK}">Your HUE report is unlocked.</div>
     <div style="font:400 15px/1.6 Georgia,serif;color:${SOFT};margin:12px 0 24px">Open the link below on any device, take the two-minute analysis, and your full report appears — this unlock is yours forever.</div>
     <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto"><tr><td style="background:${INK};border-radius:2px">
-      <a href="https://huebloom.app/?unlocked=1" style="display:inline-block;padding:14px 26px;font:600 14px Arial,sans-serif;color:#fff9f4;text-decoration:none">Open my report</a>
+      <a href="${unlockUrl}" style="display:inline-block;padding:14px 26px;font:600 14px Arial,sans-serif;color:#fff9f4;text-decoration:none">Open my report</a>
     </td></tr></table>
     <div style="font:400 12px/1.6 Arial,sans-serif;color:${SOFT};margin-top:22px">Questions or a refund within 30 days: reply to this email.</div>
   </td></tr></table></td></tr></table></body></html>`;
@@ -190,8 +253,58 @@ async function sendEmail(env, to, subject, htmlBody) {
   return r.json();
 }
 
+/* Only the live site may read /verify. A GET with no custom headers is a CORS
+   "simple request", so no preflight is needed and the browser still enforces
+   this allow-list before handing the JSON to page script. */
+const SITE_ORIGIN = 'https://huebloom.app';
+const corsHeaders = origin => ({
+  'Content-Type': 'application/json',
+  'Cache-Control': 'no-store',
+  'Access-Control-Allow-Origin': origin === SITE_ORIGIN ? SITE_ORIGIN : SITE_ORIGIN,
+  'Vary': 'Origin',
+});
+
 export default {
   async fetch(request, env) {
+    const url = new URL(request.url);
+
+    const json = (body, status) => new Response(JSON.stringify(body),
+      { status, headers: corsHeaders(request.headers.get('origin')) });
+
+    /* ---- entitlement check, called by the site before it unlocks ---- */
+    if (url.pathname === '/verify') {
+      const claims = await readUnlockToken(env, url.searchParams.get('t') || '');
+      return claims ? json({ ok: true, season: claims.season || null }, 200) : json({ ok: false }, 403);
+    }
+
+    /* ---- post-checkout return path -------------------------------------
+       Closing the ?unlocked=1 hole would otherwise break the most sensitive
+       moment there is: the buyer lands back on the site straight from Stripe,
+       before the email arrives. Stripe can substitute the real session id into
+       the Payment Link success URL ({CHECKOUT_SESSION_ID}), so the site can ask
+       us to confirm that session was actually paid and mint the token for it.
+
+       Needs STRIPE_API_KEY (a restricted, read-only Checkout Sessions key). If
+       it is absent this returns not-enabled and the site falls back to telling
+       the buyer to open the link in their email -- degraded, never open. */
+    if (url.pathname === '/session') {
+      const sid = url.searchParams.get('sid') || '';
+      if (!env.STRIPE_API_KEY) return json({ ok: false, reason: 'session-verify-not-enabled' }, 501);
+      if (!/^cs_[A-Za-z0-9_]{10,200}$/.test(sid)) return json({ ok: false, reason: 'bad-session-id' }, 400);
+      let s;
+      try {
+        const r = await fetch('https://api.stripe.com/v1/checkout/sessions/' + encodeURIComponent(sid), {
+          headers: { Authorization: 'Bearer ' + env.STRIPE_API_KEY },
+        });
+        s = await r.json();
+        if (!r.ok) return json({ ok: false, reason: 'stripe-lookup-failed' }, 403);
+      } catch (e) { return json({ ok: false, reason: 'stripe-unreachable' }, 502); }
+      /* Only a genuinely paid session mints a token. */
+      if (s.payment_status !== 'paid') return json({ ok: false, reason: 'not-paid' }, 403);
+      const season = seasonFromRef((s.client_reference_id || '').toLowerCase());
+      return json({ ok: true, season: season || null, token: await mintUnlockToken(env, s.id, season) }, 200);
+    }
+
     if (request.method !== 'POST') return new Response('hue-report-mailer', { status: 200 });
     const payload = await request.text();
     const ok = await verifyStripe(payload, request.headers.get('stripe-signature') || '', env.STRIPE_WEBHOOK_SECRET);
@@ -203,9 +316,13 @@ export default {
       const email = s.customer_details && s.customer_details.email;
       if (email) {
         const season = seasonFromRef((s.client_reference_id || '').toLowerCase());
+        /* One token per purchase, bound to the Stripe session id. This is the
+           only thing that grants access -- a bare ?unlocked=1 no longer does. */
+        const token = await mintUnlockToken(env, s.id, season);
+        const unlockUrl = SITE_ORIGIN + '/?t=' + encodeURIComponent(token);
         try {
-          if (season) await sendEmail(env, email, 'Your ' + season + ' report — every color, yours forever', renderEmail(season));
-          else await sendEmail(env, email, 'Your HUE report is unlocked', renderFallback());
+          if (season) await sendEmail(env, email, 'Your ' + season + ' report — every color, yours forever', renderEmail(season, unlockUrl));
+          else await sendEmail(env, email, 'Your HUE report is unlocked', renderFallback(unlockUrl));
         } catch (e) {
           // let Stripe retry on send failure
           return new Response('email failed', { status: 500 });

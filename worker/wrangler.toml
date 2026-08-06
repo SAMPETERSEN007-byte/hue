@@ -1,0 +1,34 @@
+# HUE report-mailer — Stripe webhook -> Resend report email, plus the unlock
+# entitlement endpoints (/verify, /session).
+#
+# This worker was originally created by pasting source into the Cloudflare
+# dashboard, so there was no wrangler config and no one-command deploy. There is
+# now. `name` must stay exactly "hue-report-mailer" — that is the existing worker
+# behind hue-report-mailer.synapse-sam.workers.dev, which the live site and the
+# Stripe webhook both point at. Changing it creates a SECOND worker and silently
+# leaves the real one running the old code.
+#
+# Deploy:
+#   cd ~/Backups/hue-deploy-staged/worker && wrangler login && wrangler deploy
+#
+# Secrets already set on the deployed worker (wrangler deploy does NOT clear
+# them, and they are deliberately not in this file):
+#   STRIPE_WEBHOOK_SECRET  — Stripe signature verification; ALSO derives the
+#                            unlock-token signing key (label "hue-unlock-v1").
+#                            Rotating it invalidates every issued unlock token.
+#   RESEND_API_KEY         — report delivery
+#
+# Optional, enables the post-checkout /session path:
+#   STRIPE_API_KEY  — RESTRICTED, read-only on Checkout Sessions.
+#                     wrangler secret put STRIPE_API_KEY
+#   Without it /session returns 501 and the site tells the buyer to open the
+#   link in their email. Nothing breaks; the return-from-Stripe unlock is just
+#   deferred until the email lands.
+#
+# To also close the post-checkout gap, set the Stripe Payment Link success URL to:
+#   https://huebloom.app/?sid={CHECKOUT_SESSION_ID}
+# (currently https://huebloom.app/?unlocked=1, which no longer unlocks anything).
+
+name = "hue-report-mailer"
+main = "report-mailer.js"
+compatibility_date = "2026-08-01"
