@@ -364,8 +364,13 @@
      handle, the blush pan's inner ring, the iris — turning each glyph into a
      solid blob. The attribute selector outranks .lay .g and gives them back. */
   .lay .g[fill="none"]{fill:none}
+  /* Long single-word shade names ("EUCALYPTUS", "CHOCOLATE") are wider than the
+     fixed figure box and were spilling sideways into the neighbouring garment —
+     measured collision at 390px, the most common iPhone width. Breaking inside
+     the word keeps every caption inside its own column at any width. */
   .lay figcaption{font-size:9.5px;line-height:1.25;letter-spacing:.05em;
-          text-transform:uppercase;color:var(--soft);margin-top:3px}
+          text-transform:uppercase;color:var(--soft);margin-top:3px;
+          overflow-wrap:anywhere;word-break:break-word;hyphens:auto}
   /* One "wear this / not this" strip, shared by hair, metals and prints. Every
      one of those three is the same shape of advice — a short list to ask for
      and a short list to refuse — so they get one component, not three. */
