@@ -2458,11 +2458,22 @@ const METAL_HEX={'Yellow gold':'#d4a017','Polished yellow gold':'#e0b93c','Rose 
 const METAL_DIRECTION={
  'Light Spring':{wear:['Yellow gold','Rose gold','Pearl'],avoid:['Silver','Gunmetal']},
  'True Spring':{wear:['Yellow gold','Brass','Rose gold'],avoid:['Silver']},
- 'Bright Spring':{wear:['Polished yellow gold'],avoid:['Silver','Antique gold']},
+ /* "Antique gold" was on the Leave row, but this season's prose objects to the
+    FINISH ("bright and reflective over brushed or antiqued"), not the metal —
+    so a warm gold sat in a warm season's avoid list, 42 ΔRGB from the gold on
+    the Wear row directly above it. Two near-identical golds on opposite rows
+    reads as a mistake, and it is the one case that made the temperature
+    invariant below unstateable. */
+ 'Bright Spring':{wear:['Polished yellow gold'],avoid:['Silver']},
  'Light Summer':{wear:['Silver','White gold','Platinum'],avoid:['Yellow gold']},
  'True Summer':{wear:['Silver','White gold','Platinum'],avoid:['Yellow gold','Rose gold']},
  'Soft Summer':{wear:['Brushed silver','White gold','Pewter','Pearl'],avoid:['Yellow gold']},
- 'Soft Autumn':{wear:['Antique gold','Bronze','Copper','Pewter'],avoid:['Silver']},
+ /* Pewter was on the Wear row, but the prose offers it as a concession, not a
+    recommendation — "if you wear silver, smoke it down to pewter". Showing a
+    cool grey as a warm season's recommendation, directly above Silver on the
+    Leave row two shades away, contradicted itself. The Wear row now carries
+    only what the sentence actually recommends. */
+ 'Soft Autumn':{wear:['Antique gold','Bronze','Copper'],avoid:['Silver']},
  'True Autumn':{wear:['Yellow gold','Brushed brass','Copper'],avoid:['Silver','Platinum']},
  'Deep Autumn':{wear:['Antique gold','Bronze','Brushed gold'],avoid:['Silver']},
  'Deep Winter':{wear:['Silver','White gold','Platinum','Gunmetal'],avoid:['Yellow gold']},
@@ -2598,8 +2609,49 @@ function warmthAudit(){
   for(const [name,hx] of Object.entries(METAL_HEX)) check('metal',name,hx);
   return bad;
 }
+/* The two audits above only assert that a tone's NAME appears somewhere in the
+   season's prose. That is presence, not polarity: listing Ash as WEAR for a
+   Spring would pass, because the word "ash" is in that sentence — as the thing
+   to avoid. So the guard could never catch the one mistake it exists to catch.
+
+   This one can. The twelve seasons split cleanly into six warm (Spring,
+   Autumn) and six cool (Summer, Winter), and a tone named for a temperature
+   has to follow that split: golden/honey/caramel/copper belong on a warm
+   season's WEAR row and a cool season's LEAVE row, and ash/platinum/silver/
+   mushroom the exact opposite. A flip in either direction is a real error.
+
+   Only unambiguous temperature words count. Espresso, jet and black are
+   deliberately absent: Light Spring avoids "heavy espresso" for DEPTH, not
+   warmth, and flagging that would be a false positive that trains people to
+   ignore the guard. */
+const WARM_MARK=/\b(golden|gold|honey|caramel|copper|coppery|auburn|butterscotch|chestnut|strawberry|bronze|brass|brassy)\b/i;
+const COOL_MARK=/\b(ash|platinum|silver|silvery|silvering|icy|mushroom|smoke|smoky|pewter|gunmetal|blue-black)\b/i;
+const COOL_SEASON=/Summer|Winter/;
+function tempOf(name){
+  /* "White gold" is a cool metal that contains the word gold — test it first */
+  if(/white gold/i.test(name))return 'cool';
+  if(COOL_MARK.test(name))return 'cool';
+  if(WARM_MARK.test(name))return 'warm';
+  return null;
+}
+function polarityAudit(){
+  const bad=[];
+  const check=(season,row,name)=>{
+    const t=tempOf(name); if(!t)return;
+    const want=COOL_SEASON.test(season)?'cool':'warm';
+    const shouldBe=(row==='wear')?want:(want==='warm'?'cool':'warm');
+    if(t!==shouldBe)
+      bad.push(`${season} (${want}) lists ${t} "${name}" as ${row.toUpperCase()}`);
+  };
+  for(const [s,d] of Object.entries(HAIR_DIRECTION))
+    ['wear','avoid'].forEach(k=>(d[k]||[]).forEach(([n])=>check(s,k,n)));
+  for(const [s,d] of Object.entries(METAL_DIRECTION))
+    ['wear','avoid'].forEach(k=>(d[k]||[]).forEach(n=>check(s,k,n)));
+  return bad;
+}
 function reportDirectionAudit(){
   return {hair:hairDirectionAudit(), metals:metalDirectionAudit(), warmth:warmthAudit(),
+    polarity:polarityAudit(),
     seasonsMissing:Object.keys(SEASON_DETAILS).filter(s=>!HAIR_DIRECTION[s]||!METAL_DIRECTION[s]||!PRINT_DIRECTION[s])};
 }
 function comboChips(text,det){
