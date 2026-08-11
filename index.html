@@ -1993,11 +1993,27 @@ function analyzePhoto(img){
      little; never enough to outvote the skin itself (±1 on a ±4 scale) */
   let warmAux=0;
   if(eyeName){
-    /* deep brown is most of humanity — nearly uninformative; the rarer,
-       clearly-warm irises (amber, hazel) carry the real signal */
+    /* Brown carries NO warm evidence, because it is the base rate. The old
+       comment here said deep brown was "nearly uninformative" and then scored
+       it +.15 anyway, with plain brown at +.25 — so the most common iris on
+       earth pushed its owner warm for a trait that distinguishes nobody from
+       anybody. Evidence has to be evidence ABOUT something: a signal shared by
+       most of the population cannot separate warm from cool, whatever its
+       correlation with either in isolation.
+       The genuinely warm-distinctive irises are still counted, and the
+       classifier above already separates them — 'amber brown' and 'hazel' are
+       split out by chroma (eyeC>28 / >20), which is exactly the golden content
+       that makes an iris read warm. That signal is kept at full weight. Blue
+       and gray stay negative for the same reason in reverse: they are
+       distinctive, not modal.
+       HONEST SCOPE: this changes nothing on the 20-photo corpus — label
+       accuracy, stability, pair-stability, consistency and the accuracy gate
+       are all bit-identical before and after. It is not an accuracy fix. It
+       removes a one-directional bias applied to roughly four fifths of real
+       customers, none of whom are in the corpus, and it deletes a term rather
+       than fitting one. */
     if(/amber|hazel/.test(eyeName))warmAux+=.35;
-    else if(eyeName==='brown'||eyeName==='light brown')warmAux+=.25;
-    else if(eyeName==='deep brown')warmAux+=.15;
+    else if(eyeName==='light brown')warmAux+=.15;
     else if(/blue/.test(eyeName))warmAux-=.35;
     else if(eyeName==='gray')warmAux-=.15;
   }
