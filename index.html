@@ -883,7 +883,12 @@ and with no disclosure shown. --></noscript>
           </div>
           <p class="rb-terms">One-time $29.99 · 30-day money-back guarantee · no subscription</p>
           <button class="btn btn-cream" onclick="startQuiz()">Find my season — free</button>
-          <p class="rb-note">Your season and power colors come free. The report is there if you want the rest.</p>
+          <!-- "colors" plural promised more than the free result delivers: it names
+               exactly one, the hero, deliberately — two nameless swatches beside it
+               prove the specificity without handing over anything wearable. Naming a
+               second colour to match the copy would give away the product; matching
+               the copy to the product costs nothing and keeps the promise true. -->
+          <p class="rb-note">Your season and your hero color come free. The report is there if you want the rest.</p>
         </div>
         <figure class="rb-card-wrap">
           <div class="card rb-card">
@@ -2083,7 +2088,7 @@ function mapSeason(warm,depth,chroma){
 }
 function decideSeason(photo){
   // Blend the quiz (reliable for undertone) with the photo (depth + chroma).
-  let warmScore=st.warm, depth=0.55, chroma=0.34, nud=0.05;
+  let warmScore=st.warm, depth=0.55, chroma=0.34, nud=0.05, skinVote=null;
   if(photo){
     /* the selfie is the primary undertone read. Two independent visual signals vote:
        the white-balanced red-blue split (proven thresholds 18/-6, asymmetric because
@@ -2109,6 +2114,19 @@ function decideSeason(photo){
        so the skin itself always outvotes them */
     if(photo.warmAux)vote+=photo.warmAux;
     vote=Math.max(-4,Math.min(4,vote));
+    /* PUBLISH the vote the decision actually used. The measured panel captions
+       the skin swatch "warm/cool/neutral undertone", and it used to recompute
+       that word from its own copy of this formula. When the engine moved the
+       undertone read onto relWarm, only this function was updated — the panel
+       kept computing from raw warmSig, the same measure this commit's own
+       comment shows calls 20 of 20 corpus faces warm. So the receipt that
+       exists to justify the verdict could caption a cool-season customer's
+       skin "warm undertone". Publishing the number instead of duplicating the
+       formula is what makes that class of drift impossible, rather than fixed
+       once. Not a shared function: decideSeason is extracted standalone by
+       regex into five separate gate harnesses, and a call to a helper they do
+       not extract would break every one of them. */
+    skinVote=vote;
     /* confidence weighting: the surer the visual read, the less the questionnaire
        can move it — the SAME photo must give the same season unless it is genuinely
        borderline, in which case the answers break the tie */
@@ -2130,7 +2148,7 @@ function decideSeason(photo){
      co-answer; the reveal offers both instead of forcing one. Confident reads
      stay a single, deterministic call (engine-test 4c). The threshold is inlined
      so this function extracts standalone into the test harness. */
-  lastTemp={primary, sister:mapSeason(!warm, depth, chroma), warm,
+  lastTemp={primary, sister:mapSeason(!warm, depth, chroma), warm, skinVote,
             borderline:Math.abs(warmScore)<1.0};
   return primary;
 }
@@ -2396,11 +2414,24 @@ function render(season){
   if(mp&&mp.skinHex){
     /* caption from the same vote the season decision used — the panel must
        never contradict the chips */
-    const w=mp.warmSig;
-    let v=w>55?3:w>18?1.5:w<-20?-3:w<-6?-1.5:0;
-    if(mp.hue!=null)v+=mp.hue>63?2:mp.hue>58?1:mp.hue<44?-2:mp.hue<48?-1:0;
-    v+=mp.warmAux||0;
-    const toneWord=v>=1.2?'warm undertone':v<=-1.2?'cool undertone':'neutral undertone';
+    /* Read the vote the season decision actually used — never re-derive it.
+       A restored session (render() from localStorage, no decideSeason run) has
+       no vote to read, and the stored read predates relWarm, so recomputing
+       there would reintroduce exactly the stale-formula bug. Fall back to the
+       verdict itself instead: the panel exists to justify the season, so
+       naming the season's own temperature is always defensible. */
+    const sv=(lastTemp&&lastTemp.skinVote!=null)?lastTemp.skinVote:null;
+    const seasonWarm=/Spring|Autumn/.test(season);
+    let toneWord = sv==null ? (seasonWarm?'warm undertone':'cool undertone')
+                 : sv>=1.2 ? 'warm undertone'
+                 : sv<=-1.2 ? 'cool undertone' : 'neutral undertone';
+    /* The receipt must never contradict the verdict printed above it. The
+       questionnaire is blended into warmScore, so a face that measures faintly
+       cool can still land in a warm season when the answers are strongly warm.
+       "Neutral" is the honest word for that disagreement; the opposite
+       temperature is not, and reading "cool undertone" under True Autumn is
+       what makes a customer ask for their money back. */
+    if(toneWord===(seasonWarm?'cool undertone':'warm undertone'))toneWord='neutral undertone';
     const hairWord=mp.hairL<.25?'deep':mp.hairL<.5?'medium depth':'light';
     const sw=[['Skin',mp.skinHex,toneWord],
               mp.hairHex?['Hair',mp.hairHex,hairWord]:null,
