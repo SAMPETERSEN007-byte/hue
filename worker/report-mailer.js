@@ -264,6 +264,79 @@ async function sendEmail(env, to, subject, htmlBody) {
    "simple request", so no preflight is needed and the browser still enforces
    this allow-list before handing the JSON to page script. */
 const SITE_ORIGIN = 'https://huebloom.app';
+
+/* --- Meta Conversions API -------------------------------------------------
+   The browser pixel already fires Purchase, but a browser event is the least
+   reliable one there is: ad blockers, ITP, a closed tab before the redirect
+   lands. Stripe's webhook is the only place a purchase is known for certain,
+   so the same event is reported again from here, server to server.
+
+   Dedup: index.html fires Purchase with {eventID: sid}, the Stripe checkout
+   session id. Meta dedups on event_name + event_id for 48h, so this MUST send
+   the same sid as event_id or every sale is counted twice.
+
+   Match quality: email only. fbp/fbc live in the browser and never reach a
+   Stripe webhook. Hashed email is a strong identifier on its own; forwarding
+   fbp/fbc through checkout metadata would raise match rate and is the obvious
+   next improvement, not a blocker.
+
+   Failure policy: BEST EFFORT, always. The caller must not fail the webhook on
+   a CAPI error. Stripe retries a non-2xx, and the retry re-runs sendEmail, so
+   a Meta outage would mail every buyer their report repeatedly. Reporting is
+   worth less than not spamming a paying customer. */
+const CAPI_VERSION = 'v25.0';
+
+async function sha256Hex(s) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+/* Meta requires email normalised before hashing: trimmed and lowercased. */
+async function hashEmail(email) {
+  const e = String(email || '').trim().toLowerCase();
+  return e ? await sha256Hex(e) : null;
+}
+
+async function sendCAPI(env, ev) {
+  if (!env.META_PIXEL_ID || !env.META_CAPI_TOKEN) return { ok: false, reason: 'capi-not-configured' };
+
+  const user_data = {};
+  const em = await hashEmail(ev.email);
+  if (em) user_data.em = [em];
+  if (ev.fbp) user_data.fbp = ev.fbp;
+  if (ev.fbc) user_data.fbc = ev.fbc;
+  if (ev.ip) user_data.client_ip_address = ev.ip;
+  if (ev.ua) user_data.client_user_agent = ev.ua;
+  if (!Object.keys(user_data).length) return { ok: false, reason: 'no-identifier' };
+
+  const body = {
+    data: [{
+      event_name: ev.name,
+      event_time: ev.time || Math.floor(Date.now() / 1000),
+      event_id: ev.id,
+      action_source: 'website',
+      event_source_url: ev.sourceUrl || SITE_ORIGIN + '/',
+      user_data,
+      ...(ev.value != null ? { custom_data: { value: ev.value, currency: ev.currency || 'USD' } } : {}),
+    }],
+  };
+  /* set META_TEST_EVENT_CODE to watch events land in Events Manager -> Test
+     events without polluting live attribution. Unset it to go live. */
+  if (env.META_TEST_EVENT_CODE) body.test_event_code = env.META_TEST_EVENT_CODE;
+
+  const url = 'https://graph.facebook.com/' + CAPI_VERSION + '/' +
+    encodeURIComponent(env.META_PIXEL_ID) + '/events?access_token=' +
+    encodeURIComponent(env.META_CAPI_TOKEN);
+
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const text = await r.text();
+  return { ok: r.ok, status: r.status, body: text.slice(0, 400) };
+}
+
 const corsHeaders = origin => ({
   'Content-Type': 'application/json',
   'Cache-Control': 'no-store',
@@ -346,6 +419,23 @@ export default {
           return new Response('email failed', { status: 500 });
         }
       }
+      /* Server-side Purchase, deduped against the browser pixel on sid.
+         Deliberately AFTER the email and deliberately swallowed: reporting a
+         conversion is never worth risking a duplicate report email. Runs even
+         when there was no email address on the session — the sale still
+         happened and Meta should still hear about it. */
+      try {
+        const res = await sendCAPI(env, {
+          name: 'Purchase',
+          id: s.id,
+          email,
+          value: (s.amount_total != null ? s.amount_total / 100 : undefined),
+          currency: (s.currency || 'usd').toUpperCase(),
+          time: event.created,
+          sourceUrl: SITE_ORIGIN + '/',
+        });
+        if (!res.ok) console.log('capi purchase not reported:', JSON.stringify(res));
+      } catch (e) { console.log('capi purchase threw:', e && e.message); }
     }
     return new Response('received', { status: 200 });
   }

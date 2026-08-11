@@ -25,6 +25,21 @@
 #   link in their email. Nothing breaks; the return-from-Stripe unlock is just
 #   deferred until the email lands.
 #
+# Optional, enables the server-side Meta Conversions API Purchase:
+#   META_PIXEL_ID    — 928398310306386 (the pixel, NOT the ad account id)
+#   META_CAPI_TOKEN  — Events Manager -> Data sources -> the pixel -> Settings
+#                      -> Conversions API -> Generate access token
+#   wrangler secret put META_PIXEL_ID && wrangler secret put META_CAPI_TOKEN
+#   With BOTH set, checkout.session.completed reports Purchase server-to-server,
+#   deduped against the browser pixel on the Stripe session id. With either
+#   missing, sendCAPI returns capi-not-configured and does nothing — the
+#   webhook, the email and the unlock are all unaffected either way.
+#
+#   META_TEST_EVENT_CODE — OPTIONAL and temporary. Set it to watch events land
+#   in Events Manager -> Test events without polluting live attribution, then
+#   UNSET it (`wrangler secret delete META_TEST_EVENT_CODE`) to go live. Leaving
+#   it set means real purchases are only ever counted as test events.
+#
 # To also close the post-checkout gap, set the Stripe Payment Link success URL to:
 #   https://huebloom.app/?sid={CHECKOUT_SESSION_ID}
 # (currently https://huebloom.app/?unlocked=1, which no longer unlocks anything).
