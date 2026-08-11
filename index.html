@@ -1839,7 +1839,15 @@ function analyzePhoto(img){
        catchlight (blown), low saturation so a colored iris can't leak in. The
        lid shadows the sclera, so the floor is well below skin luma. */
     const scleraKeep=(r,g,b)=>{
-      if(isSkin(r,g,b))return false;
+      /* NO isSkin() VETO HERE, deliberately. isSkin() is tuned to FIND face
+         skin, and in a warm portrait the sclera is tinted by skin bounce and
+         shadowed by the lid, so it lands inside the skin gamut: measured, the
+         veto rejected 96-98% of every eye box. That left the surviving count
+         sitting on the noise floor, where a 14-pixel swing between two frames
+         of the SAME face flipped white balance from gray-world to sclera and
+         moved the season with it (gal-spring read True Spring in mauve and
+         Bright Spring in coral). The saturation test below already excludes
+         skin. Guarded by tools/pair-stability-gate.js. */
       const ly=lumOf(r,g,b);
       if(ly<Math.max(.32,lSkinEst*.62)||ly>.97)return false;
       const mx=Math.max(r,g,b);
@@ -1912,12 +1920,17 @@ function analyzePhoto(img){
   /* clarity the way an analyst reads it: skin saturation + feature contrast,
      sharpened by a clearly-colored iris (calibrated to bright>0.44/soft<0.26) */
   const eyeClarity=eyeRGB?Math.max(0,Math.min(1,(eyeC-8)/30)):null;
+  /* contrast is NOT saturation. Skin-to-hair contrast is a VALUE phenomenon and
+     it now lives in depthAxis where it belongs. Leaving it here inflated the
+     chroma of every high-contrast face, which is what pushed hero - fair skin,
+     deep auburn hair - over the bright line into Spring when she measures muted.
+     The chroma centre in mapSeason moves 0.35 -> 0.25 to follow it. */
   const chromaAxis=Math.max(0,Math.min(1,
-    .55*satRaw+.42*contrast+(eyeClarity!=null?.10*eyeClarity:.03)));
+    .55*satRaw+(eyeClarity!=null?.10*eyeClarity:.03)));
   /* depth: skin leads, hair and eyes shade it the way an analyst weighs the
      whole head — deviations from mid keep the calibration center unmoved */
   const depthAxis=Math.max(0,Math.min(1,
-    lSkin+.16*(lHair-.42)+(lEye!=null?.08*(lEye-.30):0)));
+    lSkin+.16*(lHair-.42)+(lEye!=null?.08*(lEye-.30):0)-.15*contrast));
   /* patch-skin LAB — the display read; the vote fields above stay on the
      whole-face scale the thresholds know */
   const [,aStar,bStar]=rgb2lab(R,Gc,B);
@@ -1938,7 +1951,7 @@ function analyzePhoto(img){
   if(hairRGB)warmAux+=Math.max(-.3,Math.min(.3,(hairRGB[0]-hairRGB[2]-12)/120));
   if(lipHue!=null)warmAux+=lipHue>45?.3:lipHue>28?.1:lipHue<18?-.3:0;
   warmAux=Math.max(-1,Math.min(1,warmAux));
-  return {warmSig:vR-vB, hue, labC, l:depthAxis, s:chromaAxis, satRaw, contrast,
+  return {warmSig:vR-vB, relWarm:(vR-vB)/Math.max(1,(vR+vG+vB)/3), hue, labC, l:depthAxis, s:chromaAxis, satRaw, contrast,
     hairL:lHair, faceCells:best.length, warmAux,
     skinL:lSkin, patches:patches.length, wbSource, scleraN,
     scleraHex:scleraRGB?hex(scleraRGB[0],scleraRGB[1],scleraRGB[2]):null,
@@ -1948,6 +1961,34 @@ function analyzePhoto(img){
     lipHex:lipRGB?hex(lipRGB[0],lipRGB[1],lipRGB[2]):null,
     eyeName, lEye, eyeC, face:face};
 }
+/* HAIR PROSE GUARD -----------------------------------------------------------
+   SEASON_DETAILS[*].hair is written as an ASSERTION about the reader's own
+   hair ("Your hair wants sunlight in it: golden blonde, honey, strawberry
+   blonde..."). But the season is an INFERENCE, while the hair swatch in the
+   measured row three cards up is a MEASUREMENT, and nothing ever coupled the
+   two. When they disagree the report contradicts itself on one screen, which
+   is how a customer whose hair measured #483833 was told she was a strawberry
+   blonde.
+
+   This does not try to make the inference right. It states the measurement
+   first, in the SAME words and the SAME thresholds the free chip already uses
+   at :2174 so the two can never drift, and re-frames the season copy as the
+   direction to move FROM that base. Advice, not description. When the hair was
+   never read it claims nothing at all. */
+function hairAdvice(det,mp){
+  const body='<p>'+det.hair+'</p>';
+  if(!mp||mp.hairHex==null||mp.hairL==null)
+    return '<p class="hair-note"><b>Your hair was not readable in your photo.</b> '
+      +'So read what follows as the direction '+currentSeason+' moves in, and hold it '
+      +'against your own base with your colorist. Nothing here is a description of '
+      +'the hair you already have.</p>'+body;
+  const word=mp.hairL<.25?'deep':mp.hairL<.5?'medium depth':'light';
+  return '<p class="hair-note"><b>Measured first.</b> Your hair reads <b>'+word+'</b> in '
+    +'your photo, <i style="display:inline-block;width:.72em;height:.72em;border-radius:50%;'
+    +'vertical-align:-1px;background:'+mp.hairHex+'"></i> '+mp.hairHex.toUpperCase()+'. That is '
+    +'the measurement and it stands. What follows is the direction '+currentSeason+' moves in '
+    +'from that base, a colorist brief rather than a description of the hair you have.</p>'+body;
+}
 function mapSeason(warm,depth,chroma){
   /* Professional 12-season logic (Sci\ART / 12 Blueprints): the DOMINANT
      characteristic is the MOST EXTREME of value/chroma — not value-checked-first.
@@ -1956,10 +1997,39 @@ function mapSeason(warm,depth,chroma){
      0.54/0.35 neutral centers and 0.09 half-widths keep the v4.2 photo calibration:
      |sv|>1 and |sc|>1 are exactly the old deep/light and bright/soft thresholds. */
   const sv=(0.54-depth)/0.09;   // + deep, - light
-  const sc=(chroma-0.35)/0.09;  // + bright, - soft
+  const sc=(chroma-0.25)/0.09;  // + bright, - soft  (centre moved with the contrast term)
   const vX=Math.abs(sv)>1, cX=Math.abs(sc)>1;
   let dom=null; // null = neither value nor chroma extreme -> hue dominant -> a True season
-  if(vX||cX) dom = ((vX&&cX) ? (Math.abs(sv)>=Math.abs(sc)) : vX) ? (sv>0?'deep':'light') : (sc>0?'bright':'soft');
+  /* DOMINANCE NEEDS A MARGIN, AND A TIE GOES TO THE BETTER-MEASURED AXIS.
+     When value and chroma are BOTH extreme the old rule broke the tie with a
+     bare argmax over |sv| vs |sc|. Those two are noisy and NOT independent
+     (chromaAxis is mostly contrast, and contrast is built from the same lSkin
+     and lHair that build depthAxis), and the two outcomes sit at opposite
+     corners of the map: Light Spring and Soft Autumn share neither word nor
+     palette. So a 0.05 difference decided the whole season, and it did -
+     gal2-silver's two frames are the same woman under two drapes and she came
+     out Light Spring in one and Soft Autumn in the other.
+     The margin is MEASURED, not chosen, and no season label is involved in it.
+     Across the nine repeated before/after pairs - same face, same light, same
+     camera, only the drape changes, so the frame-to-frame spread IS sensor
+     noise - sd(depth)=0.0079 and sd(chroma)=0.0151, i.e. sd(sv)=0.088 and
+     sd(sc)=0.168 in half-width units, so sd(|sv|-|sc|)=0.189 and 3 sigma=0.57.
+     Below that the measurement cannot say which characteristic dominates.
+     When it cannot, defer to VALUE rather than invent a third answer: value is
+     measured 1.9x more precisely than chroma, so preferring the better-measured
+     axis is itself a measurement statement. Falling through to the hue-dominant
+     True branch would NOT be - that branch reads chroma sign only and carries
+     no depth term, so it would name a measurably deep face with a medium-depth
+     season (an 8.54% inversion region, measured).
+     !! 0.57 is 3 sigma AT THE CURRENT 0.09 half-widths. Anything that rescales
+     depth or chroma - folding contrast into depthAxis, moving a centre or a
+     half-width - invalidates it. Re-derive from the same nine pairs or it
+     silently becomes an arbitrary constant. The corpus CANNOT pin it: every
+     margin above 0.05 gives identical verdicts on all 20 corpus photos. Off the
+     corpus it is load-bearing (it moves 6.5% of the map at 0.57), so it rests
+     entirely on the noise measurement above. */
+  const DOM_MARGIN=0.57;
+  if(vX||cX) dom = ((vX&&cX) ? (Math.abs(sc)-Math.abs(sv) < DOM_MARGIN) : vX) ? (sv>0?'deep':'light') : (sc>0?'bright':'soft');
   if(warm) return dom==='deep'?"Deep Autumn":dom==='light'?"Light Spring":dom==='bright'?"Bright Spring":dom==='soft'?"Soft Autumn":sc>=0?"True Spring":"True Autumn";
   return dom==='deep'?"Deep Winter":dom==='light'?"Light Summer":dom==='bright'?"Bright Winter":dom==='soft'?"Soft Summer":sc>=0?"True Winter":"True Summer";
 }
@@ -1975,7 +2045,17 @@ function decideSeason(photo){
     /* the +-3 certainty band starts at 55, not 40: fair skin inflates raw
        R-B into the mid-40s on its own (measured), while genuinely warm skin
        reads 80+ — mid-40s is a lean, not a verdict */
-    let vote = w>55?3 : w>18?1.5 : w<-20?-3 : w<-6?-1.5 : 0;
+    /* RATIO, NOT DIFFERENCE. vR-vB grows with saturation and with skin depth,
+       so pale skin scores low no matter how warm it is and deep skin scores high
+       no matter how cool. The old comment right above conceded this ("fair skin
+       inflates raw R-B into the mid-40s on its own") and answered it by moving
+       the threshold to 55 - which made the cool branch unreachable: across a
+       20-photo corpus raw R-B ran 35..99 and never once came near the -6 cool
+       line, so the engine called 20 of 20 faces warm. Dividing by the channel
+       mean removes both confounds and lets cool actually occur.
+       Centre 0.22 and scale 0.32 sit mid-plateau of a 4-parameter sweep. */
+    let vote = photo.relWarm!=null ? Math.max(-3,Math.min(3,(photo.relWarm-0.22)/0.32))
+             : (w>55?3 : w>18?1.5 : w<-20?-3 : w<-6?-1.5 : 0);
     if(photo.hue!=null)vote += photo.hue>63?2 : photo.hue>58?1 : photo.hue<44?-2 : photo.hue<48?-1 : 0;
     /* eyes, hair and lips lean the read a little (engine v4) — capped at ±1
        so the skin itself always outvotes them */
@@ -2085,7 +2165,11 @@ const REJECT_MSG={
   blown:"That light is washing you out — step back from direct light and try again.",
   cast:"That light is heavily tinted — it would skew your colors. Daylight near a window reads truest.",
   gray:"That photo reads black-and-white — color is what we measure. A normal color photo will do it.",
-  small:"That photo's too small to read truly — a larger one, or a fresh selfie, will do it."
+  small:"That photo's too small to read truly — a larger one, or a fresh selfie, will do it.",
+  /* Not "we are unsure". We are the expert; we are telling you what we need.
+     A paid verdict that hedges between two seasons is not a verdict, so an
+     undecided undertone asks for the shot that settles it instead. */
+  undertone:"That light left your undertone ambiguous. Face a window in daylight, no filter, hair back off your face — that's the shot that settles it."
 };
 function centerPreviewOnFace(img,face){
   /* the detected face box → a face-centered square crop, so the analyzing
@@ -2125,6 +2209,20 @@ async function run(img){
      slower deliberation at the end */
   track('selfie_analyzed',{readable:!!photo});
   const season=decideSeason(photo);
+  /* An undecided undertone is a bad READ, not a bad answer, so it is handled
+     exactly like bad light: ask for the shot that settles it, on the same
+     two-retake budget. Past that budget we commit to the primary rather than
+     hedge, because a season the customer cannot act on is worth nothing.
+     NOTE: the 1.0 band is calibrated against the CURRENT warmScore scale. If
+     the temperature axis is rescaled, retune this with it or the gate will
+     either never fire or reject everyone. */
+  if(photo&&lastTemp&&lastTemp.borderline&&photoTries<2){
+    photoTries++;
+    show('capture');
+    toast(REJECT_MSG.undertone);
+    track('selfie_rejected',{reason:'undertone',attempt:photoTries});
+    return;
+  }
   const shades=shadeCountFor(season);
   lastPhotoRead=photo;
   if(photo&&photo.face)centerPreviewOnFace(img,photo.face);
@@ -2233,26 +2331,13 @@ function render(season){
   fbtrack('ViewContent');
   $('cardBand').innerHTML=d.band.map(c=>`<i style="background:${c}"></i>`).join('');
   const parts=season.split(' ');
-  const border=!!(lastTemp&&lastTemp.borderline&&lastTemp.sister&&lastTemp.sister!==season);
-  $('chips').innerHTML=[parts[0], parts[1], border?'Undertone on the line':(/Spring|Autumn/.test(season)?'Warm undertone':'Cool undertone')]
+  $('chips').innerHTML=[parts[0], parts[1], /Spring|Autumn/.test(season)?'Warm undertone':'Cool undertone']
     .map(t=>`<span class="chip">${t}</span>`).join('');
-  /* borderline undertone: surface the sister season the way a pro refuses to
-     call temperature on an ambiguous drape — name both, and how to settle it.
-     The report still commits to the primary (the closer of the two). */
+  /* No sister card. An ambiguous undertone is now sent back for a better photo
+     BEFORE the reveal (see run()), so anything that reaches this point is a
+     verdict we stand behind. Customers pay for the call, not for a shortlist. */
   const sn=$('sisterNote');
-  if(border){
-    const sis=lastTemp.sister, primWarm=/Spring|Autumn/.test(season);
-    const warmName=primWarm?season:sis, coolName=primWarm?sis:season;
-    sn.innerHTML=`<b>You're right on the line — between ${season} and ${sis}.</b>`
-      +`<span>Your undertone read close to neutral — the one axis a single selfie is least sure of. These two share your depth and clarity and part only on warmth. To settle it, hold gold then silver to your bare face in daylight: if gold makes your skin glow, you lean ${warmName}; if silver looks cleaner, ${coolName}. Your report is built for ${season}, the closer of the two.</span>`
-      /* NOT offered once the report is paid for. Re-running the analysis
-         recomputes currentSeason, which would silently replace the season the
-         buyer actually bought — and would also hand out all 12 reports for one
-         payment, one tap at a time. An unpaid visitor has nothing to lose by
-         reshooting, which is the whole point of the affordance. */
-      +(isUnlocked?'':`<button type="button" class="retake" onclick="retakeSelfie()">${lastPhotoRead?'Retake your selfie in daylight — it may settle this →':'Add a daylight selfie — it settles the undertone →'}</button>`);
-    sn.hidden=false;
-  }else sn.hidden=true;
+  sn.hidden=true;
   /* the tones the engine measured — the receipt behind the verdict */
   const mp=lastPhotoRead,mEl=$('measured');
   if(mp&&mp.skinHex){
@@ -2706,7 +2791,7 @@ function applyUnlocked(){
     <div class="report-card">
       <h4 class="serif">Hair that flatters</h4>
       <div class="rc-sub">Take this to your colorist.</div>
-      <p>${det.hair}</p>
+      ${hairAdvice(det,lastPhotoRead)}
       ${(()=>{const d=HAIR_DIRECTION[currentSeason]; if(!d) return '';
         const row=(list,cls)=>list.map(([n,h])=>
           `<figure class="${cls}"><span style="background:${h}"></span><figcaption>${n}</figcaption></figure>`).join('');
