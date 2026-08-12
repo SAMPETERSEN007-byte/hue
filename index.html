@@ -3525,6 +3525,44 @@ buildDecks();
        It never unlocks — but the person may well have just paid, so show them
        the confirmation rather than a bare paywall. */
     showPurchased();
+  }else if(isUnlocked&&unlockProof){
+    /* The THIRD way in, and the only one that never asked the worker anything.
+       Boot restores the unlock on `saved.unlocked && saved.ut` (see the restore
+       line above): that tests a token is PRESENT, never that it is VALID. So
+       one line in a console —
+         localStorage.hue='{"season":"Deep Autumn","unlocked":true,"ut":"x"}'
+       — unlocked the entire $29.99 report, permanently, on any device. The
+       comment beside unlockProof already promised this was "the per-purchase
+       HMAC token this device has verified with the worker"; it wasn't. The
+       earlier fix revoked the bare ?unlocked=1 flag but replaced it with a flag
+       plus any string, which moves the bar from typing a URL to typing one line.
+
+       Paint first, verify after. A buyer re-opening her report on a plane keeps
+       it, and the common case costs no visible latency.
+
+       Revoke ONLY on a verdict: a parsed {ok:false}, or a 4xx — both mean the
+       worker looked at this token and rejected it. A 5xx, an unparseable body
+       or a dead network is server trouble, not a judgement, and must never lock
+       out someone who paid. Same body-before-status parse as the /session call
+       above, because /verify answers a bad token with 403 AND {"ok":false}:
+       reading r.ok first would misfile every real rejection as an outage. */
+    fetch(WORKER+'/verify?t='+encodeURIComponent(unlockProof))
+      .then(r=>r.json().then(j=>({status:r.status,j})).catch(()=>({status:r.status,j:null})))
+      .then(({status,j})=>{
+        if(j&&j.ok)return;
+        if((j&&j.ok===false)||(status>=400&&status<500))revokeUnlock();
+      })
+      .catch(()=>{});
+  }
+
+  /* Undo a restore the worker refused. Her season and her measured read stay —
+     she still owns those and wiping them punishes the wrong person — but the
+     entitlement goes and the paywall repaints. Guarded on a rendered season
+     because applyLocked() writes into report DOM that render() creates. */
+  function revokeUnlock(){
+    isUnlocked=false;unlockProof=null;
+    store.save();
+    if(currentSeason&&SEASONS[currentSeason])applyLocked();
   }
 })();
 </script>
