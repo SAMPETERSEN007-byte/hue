@@ -297,6 +297,12 @@
   .measured{margin-top:30px}
   .measured-label{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--soft-strong);font-weight:600;margin-bottom:14px}
   .measured-row{display:flex;gap:20px;justify-content:center;flex-wrap:wrap}
+  .measured-note{max-width:470px;margin:16px auto 0;font-size:12.5px;line-height:1.62;
+    color:var(--soft);text-align:center}
+  .measured-note b{color:var(--soft-strong);font-weight:600}
+  .retake-inline{background:none;border:0;padding:0;font-family:inherit;font-size:12.5px;
+    color:var(--accent);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+  .retake-inline:hover{opacity:.72}
   .msw{width:76px}
   .msw i{display:block;height:48px;border-radius:2px;box-shadow:var(--shadow-sm),inset 0 0 0 1px rgba(43,33,41,.10)}
   .msw b{display:block;font-size:10.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);margin-top:8px}
@@ -1113,6 +1119,13 @@ and with no disclosure shown. --></noscript>
       <div class="measured" id="measured" hidden>
         <h3 class="measured-label">Measured from your selfie</h3>
         <div class="measured-row" id="measuredRow"></div>
+        <!-- Says what the photo did NOT give us. A feature that fails to read is
+             currently just omitted from the row above, so the reader cannot tell
+             the difference between "your eyes are unremarkable" and "we could not
+             see your eyes". This is disclosure, not a hedge: the verdict still
+             stands, and an ambiguous UNDERTONE is still sent back for a retake
+             before the reveal rather than being softened here. -->
+        <p class="measured-note" id="measuredNote" hidden></p>
       </div>
     </div>
 
@@ -1214,8 +1227,14 @@ and with no disclosure shown. --></noscript>
 
 <script>
 const SEASONS = {
-  "Light Spring":{band:["#ffd9c0","#ffb38a","#ffd97a","#bfe3b0","#aee0e8"],desc:"Warm, light and fresh — delicate peach, coral and golden tones light you up.",tint:"#fdf3ea",
-    teaser:["#ffcaa8","#ffd97a","#bfe3b0","#aee0e8","#ffb3c1","#e8b48f"],
+  /* Every hex on a FREE surface must exist in the paid palette. Light Spring
+     showed three that did not — #ffd9c0, #bfe3b0 and #ffcaa8 — so the preview
+     and the share card advertised colours the $29.99 report does not contain.
+     Swapped for their nearest true palette members (RGB distance 7, 16 and 8:
+     Apricot Cream, New Leaf, Sunlit Peach), which is below the threshold of
+     noticing and makes the promise true. Guarded by claims-gate C3. */
+  "Light Spring":{band:["#ffe0c2","#ffb38a","#ffd97a","#cdeab0","#aee0e8"],desc:"Warm, light and fresh — delicate peach, coral and golden tones light you up.",tint:"#fdf3ea",
+    teaser:["#ffcaa0","#ffd97a","#cdeab0","#aee0e8","#ffb3c1","#e8b48f"],
     full:["#ffe0c2","#ffcaa0","#ffb38a","#ffd97a","#f7e7a1","#cdeab0","#a8e0c0","#aee0e8","#bcd4f2","#ffc2cf","#f7a8b8","#e8b48f"]},
   "True Spring":{band:["#ff8a4c","#ffc23c","#36c9a8","#3ec0e0","#ff5f7e"],desc:"Warm and bright — clear, sunlit coral, turquoise and golden yellow are your glow.",tint:"#fdf0e6",
     teaser:["#ff8a4c","#ffc23c","#36c9a8","#3ec0e0","#ff5f7e","#e85d2f"],
@@ -2571,8 +2590,34 @@ function render(season){
               mp.lipHex?['Lips',mp.lipHex,'natural tone']:null].filter(Boolean);
     $('measuredRow').innerHTML=sw.map(([t,h,cap])=>
       `<div class="msw"><i style="background:${h}" role="img" aria-label="${t}: ${cap}, ${h.toUpperCase()}"></i><b>${t}</b><small>${cap}</small></div>`).join('');
+    /* NAME WHAT THE PHOTO DID NOT GIVE US. -----------------------------------
+       An unreadable feature is silently dropped from the row above, so the
+       reader cannot distinguish "your eyes are unremarkable" from "we never saw
+       your eyes" — and a reading built on fewer signals is presented with
+       exactly the same confidence as a complete one. That is the part that is
+       not honest, so this states it.
+       It is deliberately NOT a hedge on the season. The doctrine is
+       confident -> commit, unsure -> ask for a better photo, never a shortlist,
+       and an ambiguous undertone is already sent back for a retake in run()
+       before the reveal. What reaches this screen is a verdict we stand behind;
+       this only says which signals it rested on, and offers the retake that
+       would add the rest. Guarded by claims-gate C4. */
+    const gaps=[];
+    if(!mp.eyeName||!mp.eyeHex)gaps.push('your eyes');
+    if(!mp.scleraN)gaps.push('a clean white to balance against');
+    const note=$('measuredNote');
+    if(note){
+      if(gaps.length){
+        const what=gaps.length===2?gaps[0]+' or '+gaps[1]:gaps[0];
+        note.innerHTML='This photo did not give us <b>'+what+'</b>, so the reading above '
+          +'rests on the swatches shown. It is still a verdict, not a guess — but a '
+          +'daylight retake, hair back and no filter, adds the rest. '
+          +'<button class="retake-inline" onclick="show(\'capture\');return false;">Retake my selfie</button>';
+        note.hidden=false;
+      }else note.hidden=true;
+    }
     mEl.hidden=false;
-  }else mEl.hidden=true;
+  }else{mEl.hidden=true;const n=$('measuredNote');if(n)n.hidden=true;}
   /* free "taste" (variant C): one NAMED hero color + two nameless swatches —
      proves the report's specificity without handing over anything wearable */
   const det=SEASON_DETAILS&&SEASON_DETAILS[season],tlbl=document.querySelector('#shareCard .lbl');
