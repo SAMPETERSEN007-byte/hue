@@ -98,6 +98,38 @@
   .hero h1 em{font-style:italic;font-weight:500;color:var(--accent)}
   .hero .lede{font-size:18.5px;color:var(--soft);max-width:440px;margin:24px 0 32px}
   .hero .cta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  /* HERO QUESTION ONE ---------------------------------------------------------
+     The old hero asked for a commitment — a button labelled "Find my season"
+     that navigates to a quiz. Measured 2026-08-11: 142 TikTok visitors produced
+     ONE tap, and 73 of them fired a single event and left. That traffic is not
+     evaluating an offer, it is scrolling, and "begin a quiz" is too large a
+     first ask for it.
+     So the first question is the hero now. Tapping an answer IS starting, and
+     the visitor is 1/5 done before deciding anything. It is also the SAME test
+     the gold-or-silver TikTok deck teaches, so the page continues the video
+     instead of interrupting it with a form. Rendered from QUIZ[0] rather than
+     hardcoded — a second copy of the answers is exactly the drift that produced
+     today's undertone bug. */
+  .q1{margin:24px 0 0;max-width:440px}
+  .q1-prompt{font-size:15px;color:var(--soft-strong);margin-bottom:14px;line-height:1.5}
+  .q1-prompt em{font-style:italic;font-family:"Bodoni Moda",Georgia,serif;color:var(--ink);font-size:17px}
+  .q1-row{display:flex;gap:12px}
+  .q1-opt{flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:9px;
+    padding:16px 10px 14px;border:1px solid var(--line);background:var(--card);border-radius:3px;
+    font-family:inherit;cursor:pointer;transition:border-color .18s,box-shadow .2s,transform .16s;
+    -webkit-tap-highlight-color:transparent}
+  .q1-opt i{width:42px;height:42px;border-radius:50%;box-shadow:inset 0 -3px 8px rgba(0,0,0,.16),0 3px 10px -4px rgba(43,33,41,.4)}
+  .q1-opt b{font-size:15px;font-weight:600;color:var(--ink);letter-spacing:.01em}
+  .q1-opt small{font-size:11.5px;color:var(--soft);letter-spacing:.02em}
+  .q1-opt:hover{border-color:var(--accent);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+  .q1-opt:active{transform:translateY(1px)}
+  .q1-opt:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .q1-alt{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .q1-alt button{background:none;border:0;padding:4px 0;font-family:inherit;font-size:13px;
+    color:var(--soft-strong);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+  .q1-alt button:hover{color:var(--accent)}
+  .q1-alt span{color:var(--line)}
+
   .meta{display:flex;align-items:center;gap:10px;color:var(--soft);font-size:13.5px}
   .meta .av{display:flex}.meta .av i{width:27px;height:27px;border-radius:50%;border:2px solid var(--porcelain);margin-left:-9px}
   .stars{color:var(--accent);letter-spacing:2px;font-size:13px}
@@ -563,10 +595,15 @@
        whole loss. Reordered, the button lands at ~y=272 and ~395px of the
        mirror is still visible below it, so the proof still reads on load and
        now invites the scroll instead of blocking the tap. */
-    .hero-grid h1{order:2;margin:12px 0 20px}
-    .hero-grid .cta-row{order:3}
-    .hero-grid .mirror-wrap{order:4;margin-top:30px}
-    .hero-grid .lede{order:5;margin-top:26px}
+    /* .q1 MUST be ordered explicitly. .hero-grid>div>* sets order:6 as the
+       default, so a newly added child silently sinks to the bottom of the
+       column — which is how the hero question first landed BELOW the mirror at
+       y=1015, putting the fold back to zero tappable elements. */
+    .hero-grid h1{order:2;margin:12px 0 18px}
+    .hero-grid .q1{order:3}
+    .hero-grid .cta-row{order:4;margin-top:14px}
+    .hero-grid .mirror-wrap{order:5;margin-top:28px}
+    .hero-grid .lede{order:6;margin-top:26px}
     .mirror-wrap{margin:0 auto;max-width:330px;width:100%}
     /* the trust line is the subhead now that it sits under the button */
     .hero .cta-row .meta{font-size:13px;line-height:1.5}
@@ -783,11 +820,20 @@ and with no disclosure shown. --></noscript>
       <div>
         <span class="eyebrow">Seasonal color analysis</span>
         <h1 class="serif">Find the colors<br>that make <em>you glow.</em></h1>
-        <p class="lede">A few quiet questions, one selfie, and your exact palette — the colors that light you up, and the ones to retire. The analysis stylists charge <b>$300</b> for.</p>
+        <!-- The question comes BEFORE the lede in source, so desktop — which has no
+             flex ordering here, only source order — matches the mobile order the
+             media query already sets. With the lede in between, the option cards
+             landed at y=729 and were clipped by an 800px-tall window. The lede is
+             supporting copy; it reads fine underneath the thing it supports. -->
+        <div class="q1" id="heroQ1">
+          <p class="q1-prompt" id="heroQ1Prompt"></p>
+          <div class="q1-row" id="heroQ1Row"></div>
+          <div class="q1-alt" id="heroQ1Alt"></div>
+        </div>
         <div class="cta-row">
-          <button class="btn btn-ink" onclick="startQuiz()">Find my season</button>
           <span class="meta" style="flex-basis:100%">Free · two minutes · no sign-up · your photo never leaves your phone</span>
         </div>
+        <p class="lede">A few quiet questions, one selfie, and your exact palette — the colors that light you up, and the ones to retire. The analysis stylists charge <b>$300</b> for.</p>
       </div>
       <div>
         <div class="mirror-wrap">
@@ -1361,6 +1407,32 @@ function paintDecks(upto){
   });
 }
 function startQuiz(){st.i=0;st.answers=[];st.warm=st.light=st.chroma=0;photoTries=0;buildDecks();show('quiz');renderQ();ensureCascade();}
+/* Answering in the hero IS starting. startQuiz() resets and renders Q1, then
+   pick() records that answer, fires quiz_started and advances — so the visitor
+   lands on question 2 already one fifth done, having committed to nothing more
+   than tapping a colour they were looking at anyway. Reuses pick() rather than
+   reimplementing it so scoring, deck painting and tracking cannot diverge. */
+function startWith(idx){startQuiz();pick(idx);}
+/* Paint the hero question FROM QUIZ[0]. If the quiz data ever changes shape the
+   hero follows it, and if anything is missing the hero falls back to the plain
+   button rather than rendering a broken half-question. */
+(function paintHeroQ1(){
+  const row=$('heroQ1Row'), alt=$('heroQ1Alt'), prompt=$('heroQ1Prompt'), host=$('heroQ1');
+  if(!row||!alt||!prompt||!host)return;
+  const Q=(typeof QUIZ!=='undefined')&&QUIZ[0];
+  if(!Q||!Q.opts||Q.opts.length<2){
+    host.innerHTML='<button class="btn btn-ink" onclick="startQuiz()">Find my season</button>';
+    return;
+  }
+  prompt.innerHTML='Start here — <em>'+Q.q.replace(/\?$/,'')+'?</em>';
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  row.innerHTML=Q.opts.slice(0,2).map((o,i)=>
+    '<button class="q1-opt" onclick="startWith('+i+')" aria-label="'+esc(o.t)+' — '+esc(o.d)+'">'
+    +'<i style="background:'+(o.sw||'var(--rose)')+'"></i>'
+    +'<b>'+esc(o.t)+'</b><small>'+esc(o.d)+'</small></button>').join('');
+  alt.innerHTML=Q.opts.slice(2).map((o,i)=>
+    '<button onclick="startWith('+(i+2)+')">'+esc(o.t)+'</button>').join('<span>·</span>');
+})();
 function recompute(){st.warm=st.light=st.chroma=0;st.answers.forEach((ai,k)=>{if(ai==null)return;const e=QUIZ[k].opts[ai].e||{};st.warm+=e.warm||0;st.light+=e.light||0;st.chroma+=e.chroma||0;});}
 function renderQ(){
   const Q=QUIZ[st.i];
@@ -3157,6 +3229,20 @@ buildDecks();
     const prev=saved||{};
     localStorage.setItem('hue',JSON.stringify({season:prev.season||null,unlocked:!!prev.unlocked,via:channel,read:prev.read||null}));
   }catch(e){}}
+  /* ATTACH THE CHANNEL TO EVENTS, NOT TO THE URL. --------------------------
+     Attribution was being destroyed by the replaceState on the next line, and
+     not for the reason the comment above assumed. posthog.init() at :645 is a
+     QUEUING STUB — the real library is fetched async and captures $pageview
+     when it finally loads, reading location.href AT THAT MOMENT. This IIFE is
+     inline and has already run by then, so PostHog reads a URL whose ?via we
+     just stripped. Measured 2026-08-11: 139 of 142 TikTok visitors recorded no
+     via at all, and the 3 that did were races where array.js happened to win.
+     Registering it as a super property attaches it to every event captured
+     afterwards — quiz_started, result_viewed, checkout_clicked — which is
+     exactly what has to carry a channel for the funnel to be attributable.
+     Pageview attribution is unaffected and still available via
+     $referring_domain, so nothing is lost by not fighting the race. */
+  if(channel){try{posthog.register({hue_via:channel});}catch(e){}}
   if(fromStripe||unlockToken||viaParam||p.get('start'))history.replaceState(null,'',location.pathname);
   /* ?unlocked=1 is BOTH the Stripe success redirect AND the permanent restore
      link minted in the report email, so this block runs again every time a
