@@ -1248,7 +1248,7 @@ const SEASONS = {
      Apricot Cream, New Leaf, Sunlit Peach), which is below the threshold of
      noticing and makes the promise true. Guarded by claims-gate C3. */
   "Light Spring":{band:["#ffe0c2","#ffb38a","#ffd97a","#cdeab0","#aee0e8"],desc:"Warm, light and fresh — delicate peach, coral and golden tones light you up.",tint:"#fdf3ea",
-    teaser:["#ffcaa0","#ffd97a","#cdeab0","#aee0e8","#ffb3c1","#e8b48f"],
+    teaser:["#ffcaa0","#ffd97a","#cdeab0","#aee0e8","#f7a8b8","#e8b48f"],
     full:["#ffe0c2","#ffcaa0","#ffb38a","#ffd97a","#f7e7a1","#cdeab0","#a8e0c0","#aee0e8","#bcd4f2","#ffc2cf","#f7a8b8","#e8b48f"]},
   "True Spring":{band:["#ff8a4c","#ffc23c","#36c9a8","#3ec0e0","#ff5f7e"],desc:"Warm and bright — clear, sunlit coral, turquoise and golden yellow are your glow.",tint:"#fdf0e6",
     teaser:["#ff8a4c","#ffc23c","#36c9a8","#3ec0e0","#ff5f7e","#e85d2f"],
@@ -2342,7 +2342,15 @@ const store={
     const read=lastPhotoRead&&lastPhotoRead.skinHex?{skinHex:lastPhotoRead.skinHex,
       hairHex:lastPhotoRead.hairHex,eyeHex:lastPhotoRead.eyeHex,lipHex:lastPhotoRead.lipHex,
       eyeName:lastPhotoRead.eyeName,hairL:lastPhotoRead.hairL,hue:lastPhotoRead.hue,
-      warmSig:lastPhotoRead.warmSig,warmAux:lastPhotoRead.warmAux}:undefined;
+      warmSig:lastPhotoRead.warmSig,warmAux:lastPhotoRead.warmAux,
+      /* scleraN and relWarm persist because the measured panel READS them.
+         Without scleraN a restored session saw undefined, and the degraded-read
+         disclosure told every returning visitor their photo had no clean white
+         to balance against — including the ones whose sclera read perfectly. A
+         guard that exists to stop the page overstating cannot itself invent a
+         fault. relWarm rides along so a restored panel is not stuck deriving
+         undertone from the superseded warmSig. */
+      scleraN:lastPhotoRead.scleraN,relWarm:lastPhotoRead.relWarm}:undefined;
     /* Carry the unlock token through every save. It is the proof of purchase on
        this device: restore requires {unlocked:true, ut}, so dropping it here
        would silently revoke a real buyer the next time render() ran. */
@@ -2549,22 +2557,33 @@ function runQuizOnly(){
   });
 }
 function vivid(pal){let best=pal[0],bc=-1;for(const p of pal){const n=parseInt(p.hex.slice(1),16),c=Math.max(n>>16&255,n>>8&255,n&255)-Math.min(n>>16&255,n>>8&255,n&255);if(c>bc){bc=c;best=p;}}return best;}
-function render(season){
-  track('price_exposed',{px:PRICE_CENTS,season:season});
+/* fresh=false means we are REPAINTING a result the visitor already saw — a
+   returning device, or a buyer re-opening their report. Those repaints must not
+   emit reveal analytics. Three of the five render() call sites are restores, so
+   before this every return visit and every re-opened report counted as another
+   result_viewed, price_exposed and ViewResult. That inflates the exact numbers
+   the funnel is read from, and it teaches Meta's optimiser from people who have
+   already converted or already declined. */
+function render(season,fresh){
+  if(fresh!==false)track('price_exposed',{px:PRICE_CENTS,season:season});
   currentSeason=season;const d=SEASONS[season];
   document.documentElement.style.setProperty('--tint',d.tint);
   $('seasonName').textContent=season;$('cardSeason').textContent=season;$('seasonDesc').textContent=d.desc;
   const ins=$('insight');ins.hidden=!lastInsight;ins.textContent=lastInsight||'';
   $('unlockBtn').textContent='Unlock my '+season+' report — '+PRICE_LABEL;
   $('lockTitle').textContent='Your '+season+' report is ready';
-  track('result_viewed',{season:season,method:$('previewImg').getAttribute('src')?'photo':'quiz-only'});
+  /* method is read from the preview <img>, which a restored session never
+     populates — so a restore reported every photo-based result as 'quiz-only'.
+     Gated with the rest of the reveal analytics rather than patched, since a
+     repaint should report nothing at all. */
+  if(fresh!==false)track('result_viewed',{season:season,method:$('previewImg').getAttribute('src')?'photo':'quiz-only'});
   /* NOT ViewContent — see the ViewContent fire in the boot block. This screen
      is ~7 interactions deep and only about 4% of visitors reach it, so it is
      useless as a campaign optimisation event but it is the best INTENT signal
      the funnel has. It gets its own custom name, so it can be optimised toward
      later, once there is enough volume to leave the learning phase on it.
      Meta gets the event only — no season, no method, no read. */
-  fbtrackCustom('ViewResult');
+  if(fresh!==false)fbtrackCustom('ViewResult');
   $('cardBand').innerHTML=d.band.map(c=>`<i style="background:${c}"></i>`).join('');
   const parts=season.split(' ');
   $('chips').innerHTML=[parts[0], parts[1], /Spring|Autumn/.test(season)?'Warm undertone':'Cool undertone']
@@ -2618,7 +2637,11 @@ function render(season){
        would add the rest. Guarded by claims-gate C4. */
     const gaps=[];
     if(!mp.eyeName||!mp.eyeHex)gaps.push('your eyes');
-    if(!mp.scleraN)gaps.push('a clean white to balance against');
+    /* ===0, not falsy. undefined means NOT MEASURED — a record saved before
+       scleraN was persisted — and "we do not know" must not be reported to the
+       reader as "your photo was deficient". Only an actual measured zero is a
+       gap worth naming. */
+    if(mp.scleraN===0)gaps.push('a clean white to balance against');
     const note=$('measuredNote');
     if(note){
       if(gaps.length){
@@ -3280,13 +3303,20 @@ buildDecks();
      Parameters are here because Events Manager reported "No event parameters
      were detected" for ViewContent, and an Advantage+ Sales campaign leans on
      value/currency/content_ids to model who is worth bidding on. PRICE_CENTS is
-     the single source for the price — do not hardcode it a second time. */
-  fbtrack('ViewContent',{content_ids:['hue-report'],content_type:'product',
-    content_name:'HUE personal color report',value:PRICE_CENTS/100,currency:'USD'});
+     the single source for the price — do not hardcode it a second time.
+     FIRED BELOW, AFTER the unlock params are read, and NOT for a buyer coming
+     back. It used to fire here, before those params existed, so every return
+     from Stripe and every re-open of a report email counted as another person
+     viewing the product. Those are the people the campaign is trying to FIND;
+     feeding them back in teaches the optimiser to hunt for customers it already
+     has, and quietly pads the very number this change exists to make honest. */
 
   const unlockToken=p.get('t')||'';
   const sessionId=p.get('sid')||'';
   const legacyUnlock=p.get('unlocked')==='1';
+  if(!unlockToken&&!sessionId&&!legacyUnlock)
+    fbtrack('ViewContent',{content_ids:['hue-report'],content_type:'product',
+      content_name:'HUE personal color report',value:PRICE_CENTS/100,currency:'USD'});
   const fromStripe=!!sessionId||legacyUnlock;
   const viaParam=p.get('via');
   channel=readVia()||((saved&&saved.via)||null);
@@ -3337,7 +3367,7 @@ buildDecks();
   if(saved&&saved.read&&saved.read.skinHex)lastPhotoRead=saved.read;
   if(isUnlocked){
     if(saved&&saved.season&&SEASONS[saved.season]){
-      render(saved.season);
+      render(saved.season,false);   /* repaint of a result already seen — no reveal analytics */
       /* Same link serves the post-checkout redirect and the email restore link,
          so only say "payment received" the first time. */
       if(fromStripe)toast(firstUnlock
@@ -3361,7 +3391,7 @@ buildDecks();
     }
   }else if(saved&&saved.season&&SEASONS[saved.season]){
     /* highest-intent visitor: saw their result, didn't pay, came back */
-    render(saved.season);
+    render(saved.season,false);   /* repaint of a result already seen — no reveal analytics */
     toast('Welcome back — your '+saved.season+' result is saved.');
   }else if(p.get('start')==='quiz'){
     startQuiz();
@@ -3401,7 +3431,7 @@ buildDecks();
     const s=season&&SEASONS[season]?season:(prev.season||null);
     try{localStorage.setItem('hue',JSON.stringify({season:s,unlocked:true,ut:token,via:channel,read:prev.read||null}))}catch(e){}
     reportPurchase(sid);
-    if(s&&SEASONS[s]){render(s);toast('Your '+s+' report is unlocked below.');}
+    if(s&&SEASONS[s]){render(s,false);toast('Your '+s+' report is unlocked below.');}
     else{applyUnlocked&&applyUnlocked();toast('Unlocked — take the two-minute quiz to reveal your full report.');}
   }
 

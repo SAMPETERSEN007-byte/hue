@@ -7,7 +7,7 @@ const SEASONS = {
      Apricot Cream, New Leaf, Sunlit Peach), which is below the threshold of
      noticing and makes the promise true. Guarded by claims-gate C3. */
   "Light Spring":{band:["#ffe0c2","#ffb38a","#ffd97a","#cdeab0","#aee0e8"],desc:"Warm, light and fresh — delicate peach, coral and golden tones light you up.",tint:"#fdf3ea",
-    teaser:["#ffcaa0","#ffd97a","#cdeab0","#aee0e8","#ffb3c1","#e8b48f"],
+    teaser:["#ffcaa0","#ffd97a","#cdeab0","#aee0e8","#f7a8b8","#e8b48f"],
     full:["#ffe0c2","#ffcaa0","#ffb38a","#ffd97a","#f7e7a1","#cdeab0","#a8e0c0","#aee0e8","#bcd4f2","#ffc2cf","#f7a8b8","#e8b48f"]},
   "True Spring":{band:["#ff8a4c","#ffc23c","#36c9a8","#3ec0e0","#ff5f7e"],desc:"Warm and bright — clear, sunlit coral, turquoise and golden yellow are your glow.",tint:"#fdf0e6",
     teaser:["#ff8a4c","#ffc23c","#36c9a8","#3ec0e0","#ff5f7e","#e85d2f"],
