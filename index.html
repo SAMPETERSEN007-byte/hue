@@ -110,12 +110,12 @@
      instead of interrupting it with a form. Rendered from QUIZ[0] rather than
      hardcoded — a second copy of the answers is exactly the drift that produced
      today's undertone bug. */
-  .q1{margin:24px 0 0;max-width:440px}
-  .q1-prompt{font-size:15px;color:var(--soft-strong);margin-bottom:14px;line-height:1.5}
+  .q1{margin:18px 0 0;max-width:440px}
+  .q1-prompt{font-size:15px;color:var(--soft-strong);margin-bottom:11px;line-height:1.5}
   .q1-prompt em{font-style:italic;font-family:"Bodoni Moda",Georgia,serif;color:var(--ink);font-size:17px}
   .q1-row{display:flex;gap:12px}
-  .q1-opt{flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:9px;
-    padding:16px 10px 14px;border:1px solid var(--line);background:var(--card);border-radius:3px;
+  .q1-opt{flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:8px;
+    padding:13px 10px 12px;border:1px solid var(--line);background:var(--card);border-radius:3px;
     font-family:inherit;cursor:pointer;transition:border-color .18s,box-shadow .2s,transform .16s;
     -webkit-tap-highlight-color:transparent}
   .q1-opt i{width:42px;height:42px;border-radius:50%;box-shadow:inset 0 -3px 8px rgba(0,0,0,.16),0 3px 10px -4px rgba(43,33,41,.4)}
@@ -611,6 +611,20 @@
     .hero-grid .mirror-wrap{order:5;margin-top:28px}
     .hero-grid .lede{order:6;margin-top:26px}
     .mirror-wrap{margin:0 auto;max-width:330px;width:100%}
+    /* A SQUARER ARCH ON MOBILE, SO HER FACE IS IN THE FOLD AND NOT HER HAIRLINE.
+       At 3/4 the arch is 440px tall, and with the hero question above it the
+       face centre landed at y=853 on a real iPhone 17 — below the ~812pt that
+       iOS Safari actually shows once its bottom toolbar and the notch inset are
+       accounted for. innerHeight says 874 and is a liar here; measured on device
+       the mirror starts 63px lower than any desktop viewport reports.
+       So the visitor met a forehead. The transformation IS the proof this page
+       sells, and a cropped hairline proves nothing.
+       5/6 removes 83px of height, putting the face centre near 757 with room to
+       spare, and object-position lifts the crop toward the face so the shoulders
+       and the drape — the coloured fabric the whole demo turns on — still read.
+       Radius follows the width so the dome stays a dome at the new ratio. */
+    .mirror{aspect-ratio:5/6;border-radius:165px 165px 2px 2px}
+    .mirror img{object-position:50% 40%}
     /* the trust line is the subhead now that it sits under the button */
     .hero .cta-row .meta{font-size:13px;line-height:1.5}
     .hero .cta-row{gap:14px}
