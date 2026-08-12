@@ -105,7 +105,21 @@
   /* hero mirror — arched before/after drape slider */
   .mirror-wrap{max-width:420px;margin-left:auto}
   .mirror{position:relative;aspect-ratio:3/4;border-radius:210px 210px 2px 2px;overflow:hidden;
-    box-shadow:var(--shadow);touch-action:none;cursor:ew-resize;user-select:none;-webkit-user-select:none;
+    /* pan-y, NOT none. touch-action:none tells the browser to handle no touch
+       gesture at all here — which killed VERTICAL SCROLLING over the element.
+       On mobile this arch is 330px wide by 440 tall sitting at roughly y=400,
+       i.e. 82% of the screen width, squarely in the thumb zone, and it is the
+       most eye-catching thing on the page. A visitor who lands and flicks up on
+       her face to scroll gets nothing: the page appears frozen. Confirmed on a
+       real iPhone — an identical swipe scrolls fine 20px to the right of the
+       image and does nothing on it. That is a brutal first touch for traffic
+       arriving from TikTok, where scrolling is the reflex and closing is the
+       response to a page that will not move.
+       pan-y gives the browser vertical scrolling and keeps horizontal for the
+       drag, which is all this widget ever wanted: the handler below reads only
+       e.clientX. Today's hero reorder moved the arch DOWN into the thumb zone,
+       so this got worse at exactly the moment traffic arrived. */
+    box-shadow:var(--shadow);touch-action:pan-y;cursor:ew-resize;user-select:none;-webkit-user-select:none;
     --cut:50%;background:var(--rose);outline-offset:4px}
   .mirror:focus-visible{outline:2px solid var(--accent)}
   .mirror img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
@@ -1226,7 +1240,37 @@ const QUIZ = [
 ];
 
 const $=id=>document.getElementById(id);
-function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));$(id).classList.add('on');document.body.classList.toggle('flow',id!=='intro');window.scrollTo(0,0);if(id==='capture')ensureCascade();}
+/* A SCREEN SWITCH MUST LAND AT THE TOP, INSTANTLY. -------------------------
+   html{scroll-behavior:smooth} (:58) applies to window.scrollTo too, so this
+   was ANIMATING a scroll from wherever the visitor was. The animation then had
+   its ground cut out from under it: the outgoing screen goes display:none in
+   the same tick, #intro is 6,956px tall, and the document collapses to the
+   height of the short screen we just opened — so the smooth scroll never
+   arrived and the visitor was left looking at whatever now occupied that
+   offset. On a real iPhone that meant tapping FIND MY SEASON and landing on
+   the FOOTER, with question 1 scrolled off the top. It reads as broken.
+
+   This was invisible until today because every CTA used to sit near the top of
+   the page, so scrollTo had almost nothing to travel. The sticky bar is tapped
+   after scrolling thousands of pixels down, which is exactly when it breaks —
+   the new CTA and the bug that eats it shipped together.
+
+   Toggling scroll-behavior to auto around the jump rather than passing
+   behavior:'instant' on purpose: 'instant' is only honoured on Safari 15.4+,
+   and an unrecognised value falls back to the CSS smooth we are trying to
+   escape. Setting the property is understood everywhere it matters, and where
+   scroll-behavior is unsupported scrollTo was already instant. The previous
+   value is restored so in-page anchor links keep their smooth scroll. */
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  $(id).classList.add('on');
+  document.body.classList.toggle('flow',id!=='intro');
+  const de=document.documentElement, prev=de.style.scrollBehavior;
+  de.style.scrollBehavior='auto';
+  window.scrollTo(0,0);
+  de.style.scrollBehavior=prev;
+  if(id==='capture')ensureCascade();
+}
 /* section anchors keep working from app screens — return to the landing first */
 document.addEventListener('click',e=>{
   const a=e.target.closest('a[href^="#"]');if(!a)return;
