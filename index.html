@@ -1340,7 +1340,16 @@ const $=id=>document.getElementById(id);
    escape. Setting the property is understood everywhere it matters, and where
    scroll-behavior is unsupported scrollTo was already instant. The previous
    value is restored so in-page anchor links keep their smooth scroll. */
+/* When a screen switch happens, the pixels under the visitor's finger change
+   underneath it. A second tap from an impatient double-tap then lands on
+   whatever now occupies that spot. Measured on the live layout: tapping a hero
+   answer opens the quiz and puts a QUESTION TWO option directly under the
+   finger, so a double-tap silently answered question two with a choice the
+   visitor never made — and the engine scored it. Stamping the switch lets tap
+   handlers ignore the tail of a gesture aimed at the previous screen. */
+let screenAt=0;
 function show(id){
+  screenAt=Date.now();
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
   $(id).classList.add('on');
   document.body.classList.toggle('flow',id!=='intro');
@@ -1476,12 +1485,17 @@ function renderQ(){
   $('qBack').style.visibility = st.i===0 ? 'hidden' : 'visible';
   paintDecks(st.i);
   $('opts').innerHTML=Q.opts.map((o,idx)=>
-    `<button class="opt${o.u?' opt-u':''}" onclick="pick(${idx})">
+    `<button class="opt${o.u?' opt-u':''}" onclick="tapPick(${idx})">
        ${o.u?'<span class="swz swz-u">?</span>':`<span class="swz" style="background:${o.sw}"></span>`}
        <span class="otxt"><span class="ot">${o.t}</span><span class="od">${o.d}</span></span>
        <span class="arw">→</span>
      </button>`).join('');
 }
+/* USER taps come through here; pick() stays the internal API so startWith()
+   can answer question one immediately without tripping its own guard. 350ms is
+   above a typical double-tap interval and far below any deliberate second
+   answer — a visitor who genuinely reads a new question cannot beat it. */
+function tapPick(idx){ if(Date.now()-screenAt<350)return; pick(idx); }
 function pick(idx){
   /* ONCE PER QUIZ, not once per visit to question one. st.i returns to 0
      whenever the visitor uses Back, so re-answering the first question counted
