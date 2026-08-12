@@ -3134,8 +3134,19 @@ function checkout(){
   }
   store.save();
   track('checkout_clicked',{season:season,px:PRICE_CENTS});
+  /* NO SEASON IN THE PIXEL PAYLOAD. privacy.html says, in as many words: "The
+     pixel never receives your selfie, the tones measured from it, your
+     individual answers, or your season. We deliberately withhold the season: it
+     is an inference about your appearance, and it is not Meta's business."
+     An earlier pass today sent content_ids:[<her-season>] from here, which made
+     that paragraph false the moment anyone clicked Buy. The site's whole pitch
+     is privacy; a policy it silently breaks is worse than having no policy.
+     The constant id is what belongs here anyway — HUE sells ONE product, so the
+     content id is the report, not the reader. value and currency stay: they are
+     what the optimiser needs, they say nothing about her, and the policy
+     already discloses them. */
   fbtrack('InitiateCheckout',{value:PRICE_CENTS/100,currency:'USD',
-    content_ids:[season.toLowerCase().replace(/ /g,'-')],content_type:'product'});
+    content_ids:['hue-report'],content_type:'product'});
   const ref=((channel||'direct')+'_'+season.toLowerCase().replace(/ /g,'-')+'_px'+PRICE_CENTS).slice(0,180);
   location.href=PAYMENT_LINK+'?client_reference_id='+encodeURIComponent(ref);
 }
