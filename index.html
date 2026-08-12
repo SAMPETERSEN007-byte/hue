@@ -1439,7 +1439,7 @@ function paintDecks(upto){
     else{el.style.background='var(--line)';el.style.transform='scaleY(1)';}
   });
 }
-function startQuiz(){st.i=0;st.answers=[];st.warm=st.light=st.chroma=0;photoTries=0;buildDecks();show('quiz');renderQ();ensureCascade();}
+function startQuiz(){st.i=0;st.answers=[];st.warm=st.light=st.chroma=0;st.started=false;photoTries=0;buildDecks();show('quiz');renderQ();ensureCascade();}
 /* Answering in the hero IS starting. startQuiz() resets and renders Q1, then
    pick() records that answer, fires quiz_started and advances — so the visitor
    lands on question 2 already one fifth done, having committed to nothing more
@@ -1483,7 +1483,14 @@ function renderQ(){
      </button>`).join('');
 }
 function pick(idx){
-  if(st.i===0)track('quiz_started');
+  /* ONCE PER QUIZ, not once per visit to question one. st.i returns to 0
+     whenever the visitor uses Back, so re-answering the first question counted
+     as a whole new quiz start. That inflates the top of the funnel and deflates
+     the completion rate computed from it — and the completion rate is the
+     number the strategy rests on ("100% of quiz-starters finish, so do NOT
+     shorten the quiz"). A metric that punishes people for reconsidering is
+     measuring hesitation, not starts. Reset in startQuiz(). */
+  if(!st.started){st.started=true;track('quiz_started');}
   st.answers[st.i]=idx; recompute();
   st.i++;
   if(st.i<QUIZ.length){renderQ();}
@@ -3342,7 +3349,15 @@ buildDecks();
      exactly what has to carry a channel for the funnel to be attributable.
      Pageview attribution is unaffected and still available via
      $referring_domain, so nothing is lost by not fighting the race. */
-  if(channel){try{posthog.register({hue_via:channel});}catch(e){}}
+  /* Register HOW the channel was learned alongside it. channel falls back to a
+     via stored in localStorage, which is deliberate — a footer click and a Back
+     used to lose it entirely — but it means a visitor who once arrived from an
+     ad credits that ad for every organic visit afterwards, forever. Rather than
+     silently pick a side of the last-touch argument, record both: hue_via stays
+     the effective channel, hue_via_src says whether this visit actually carried
+     the param or inherited it from a previous one. The data can then answer the
+     attribution question instead of pre-deciding it. */
+  if(channel){try{posthog.register({hue_via:channel,hue_via_src:(readVia()?'param':'stored')});}catch(e){}}
   if(fromStripe||unlockToken||viaParam||p.get('start'))history.replaceState(null,'',location.pathname);
   /* ?unlocked=1 is BOTH the Stripe success redirect AND the permanent restore
      link minted in the report email, so this block runs again every time a
