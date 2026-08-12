@@ -183,7 +183,7 @@ function renderEmail(season, unlockUrl) {
     `<div style="font:400 14px/1.6 Georgia,serif;color:${INK};padding:6px 0">
       <em style="color:${ACCENT}">${i + 1}.</em> ${esc(c)}</div>`).join('');
 
-  return `<!doctype html><html><body style="margin:0;padding:0;background:${CREAM}">
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head><body style="margin:0;padding:0;background:${CREAM}">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CREAM}"><tr><td align="center" style="padding:28px 12px">
   <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%">
     <tr><td style="padding:8px 6px 18px">
@@ -214,7 +214,20 @@ function renderEmail(season, unlockUrl) {
       ${h2('Makeup')}
       <div style="font:600 12px Arial,sans-serif;color:${SOFT};margin:6px 0 6px">LIPS</div>${mkChips(D.makeup.lips)}
       <div style="font:600 12px Arial,sans-serif;color:${SOFT};margin:12px 0 6px">BLUSH</div>${mkChips(D.makeup.blush)}
-      <div style="font:400 13.5px/1.6 Georgia,serif;color:${INK};margin-top:12px">${esc(D.makeup.note || '')}</div>
+      <!-- EYES and THE FOUNDATION ASK were missing from this email entirely.
+           It rendered D.makeup.note, which no season has — SEASON_DETAILS
+           carries foundation, lips, blush and eyes — so that line resolved to
+           an empty string and the two remaining fields were never printed.
+           The site SELLS all four by name: the FAQ and the Product schema both
+           promise "your makeup formula — the foundation ask, lip and blush
+           shades, eyes", and the web report renders all four. This email is
+           described to the buyer as "your permanent copy... yours forever on
+           any device", so it was quietly the lesser half of what was paid for.
+           Rendered in the same order as the web report so the two agree. -->
+      <div style="font:600 12px Arial,sans-serif;color:${SOFT};margin:12px 0 6px">EYES</div>
+      <div style="font:400 13.5px/1.6 Georgia,serif;color:${INK}">${esc(D.makeup.eyes || '')}</div>
+      <div style="font:600 12px Arial,sans-serif;color:${SOFT};margin:14px 0 6px">THE FOUNDATION ASK</div>
+      <div style="font:400 13.5px/1.6 Georgia,serif;color:${INK}">${esc(D.makeup.foundation || '')}</div>
 
       ${h2('Hair direction')}
       <div style="font:400 14px/1.65 Georgia,serif;color:${INK}">${esc(D.hair)}</div>
@@ -239,7 +252,7 @@ function renderEmail(season, unlockUrl) {
 }
 
 function renderFallback(unlockUrl) {
-  return `<!doctype html><html><body style="margin:0;padding:0;background:${CREAM}">
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head><body style="margin:0;padding:0;background:${CREAM}">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 12px">
   <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="background:${CARD};border:1px solid ${LINE};border-radius:2px">
   <tr><td style="padding:34px 30px;text-align:center">
