@@ -42,9 +42,14 @@
 #
 # The post-checkout gap is CLOSED. The Stripe Payment Link success URL is
 #   https://huebloom.app/?sid={CHECKOUT_SESSION_ID}
-# verified in the dashboard 8/12 (plink_1U0VEFFRLtwNSTNBafY1ePC1, the $29.99
-# link ending gYU04). So the worker-verified ?sid= return path is live and a
-# buyer is NOT solely dependent on the report email arriving.
+# verified in the Stripe dashboard 8/12 on the live $29.99 payment link. So the
+# worker-verified ?sid= return path IS live, and a buyer is not solely dependent
+# on the report email arriving.
+#
+# NOTE: this whole directory is served publicly by GitHub Pages
+# (huebloom.app/worker/wrangler.toml returns 200), so keep internal dashboard
+# identifiers out of it. Nothing here is secret — every credential is a wrangler
+# secret, never a file — but it is needlessly public all the same.
 #
 # This comment previously said the URL was "currently ?unlocked=1, which no
 # longer unlocks anything". That was stale, and it cost real work: an audit
