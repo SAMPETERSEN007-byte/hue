@@ -438,12 +438,36 @@ export default {
           return new Response('email failed', { status: 500 });
         }
       }
+      /* CONSENT. privacy.html promises an advertising opt-out and promises to
+         honour Global Privacy Control. Both were implemented only in the
+         browser, where they stop the pixel loading — but this webhook is a
+         SECOND, independent path to Meta, and it had no idea consent existed.
+         An opted-out buyer's hashed email was transmitted to Meta server to
+         server on every purchase, which makes the policy false rather than
+         merely incomplete. grep for consent in this file used to return
+         nothing.
+
+         The browser is the only place that can know (localStorage flag, GPC is
+         a browser signal), so index.html appends `_noads` to
+         client_reference_id at checkout and this reads it back.
+
+         Fails CLOSED on purpose: no ref, an unreadable ref, or a ref Stripe
+         dropped all mean "we cannot show she consented", and that must suppress
+         the report rather than permit it. Losing a conversion datapoint is
+         recoverable; sending a person's email to Meta after they opted out is
+         not. */
+      const rawRef = String(s.client_reference_id || '');
+      const adsAllowed = rawRef !== '' && !/(^|_)noads(_|$)/.test(rawRef.toLowerCase());
+
       /* Server-side Purchase, deduped against the browser pixel on sid.
          Deliberately AFTER the email and deliberately swallowed: reporting a
          conversion is never worth risking a duplicate report email. Runs even
          when there was no email address on the session — the sale still
          happened and Meta should still hear about it. */
-      try {
+      if (!adsAllowed) {
+        console.log('capi purchase suppressed:',
+          rawRef === '' ? 'no client_reference_id — cannot establish consent' : 'buyer opted out of advertising');
+      } else try {
         const res = await sendCAPI(env, {
           name: 'Purchase',
           id: s.id,

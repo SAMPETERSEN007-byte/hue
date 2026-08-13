@@ -3198,7 +3198,30 @@ function checkout(){
      already discloses them. */
   fbtrack('InitiateCheckout',{value:PRICE_CENTS/100,currency:'USD',
     content_ids:['hue-report'],content_type:'product'});
-  const ref=((channel||'direct')+'_'+season.toLowerCase().replace(/ /g,'-')+'_px'+PRICE_CENTS).slice(0,180);
+  /* CARRY THE OPT-OUT THROUGH CHECKOUT. The browser is the ONLY place that
+     knows whether she opted out of advertising: the flag lives in her
+     localStorage and Global Privacy Control is a browser signal. A Stripe
+     webhook has neither, so the worker was reporting EVERY purchase to Meta's
+     Conversions API — including buyers who had opted out and buyers sending
+     GPC, which several US state laws treat as legally binding and which
+     privacy.html promises to honour. The pixel obeyed her; the server never
+     heard about it.
+
+     Re-derived from source here rather than reading window.HUE_ADS_OPTED_OUT,
+     because a consent signal must fail CLOSED: if the pixel block never ran,
+     that global is undefined, which is falsy, which would have silently meant
+     "she consented".
+
+     `noads` is appended AFTER the 180-char clamp, never inside it, so a long
+     channel slug can never truncate the consent marker away — the same
+     fail-open trap in a different disguise. Letters only: Stripe SILENTLY
+     DROPS a client_reference_id containing invalid characters (see the _fbp
+     warning above), and a dropped ref means no season and a generic email. */
+  var noAds = window.HUE_ADS_OPTED_OUT === true;
+  try { if (localStorage.getItem('hue_ads_optout') === '1') noAds = true; } catch(e){ }
+  if (navigator.globalPrivacyControl === true) noAds = true;
+  const mark = noAds ? '_noads' : '';
+  const ref=((channel||'direct')+'_'+season.toLowerCase().replace(/ /g,'-')+'_px'+PRICE_CENTS).slice(0,180-mark.length)+mark;
   location.href=PAYMENT_LINK+'?client_reference_id='+encodeURIComponent(ref);
 }
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),3400);}
