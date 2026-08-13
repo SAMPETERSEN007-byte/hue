@@ -2146,50 +2146,7 @@ function analyzePhoto(img){
     const lipC=Math.hypot(la,lb);
     if(lipC>45)lipRGB=null;else lipHue=((Math.atan2(lb,la)*180/Math.PI)+360)%360;
   }
-  /* EXPOSURE REFERENCE — the illuminant, read off the face itself.
-
-     depthAxis was a direct readout of how bright the phone happened to expose
-     the frame: measured, lSkin tracks exposure exactly (a 0.42x dim gives
-     0.410-0.429x skin luma across the corpus), so +-4.2% brightness moved the
-     season. The von Kries gray-world above cannot fix this — kr=gray/rm is a
-     RATIO and therefore exactly scale-invariant; it corrects colour, never level.
-
-     A camera measures albedo x illumination. Depth is albedo, so the only way
-     to recover it is to divide by a surface of KNOWN reflectance in the same
-     light. The sclera is that surface — but it is unavailable exactly when it
-     is needed: 0 of 19 lowlight frames yield one (scleraKeep's mx>105 is an
-     absolute threshold, and a 230 sclera dimmed 0.42x reads 97), and two of the
-     nine corpus faces have none even when well exposed.
-
-     So use the dichromatic split instead: the brightest facial pixels are
-     specular, and a specular highlight takes the colour and LEVEL of the
-     illuminant rather than of the skin. Measured across the clean corpus, the
-     98th percentile of face luma varies 3x less between PEOPLE than skin luma
-     does (CV 0.084 vs 0.239) while tracking a 0.42x exposure change just as
-     faithfully (0.417-0.433). That is precisely what an exposure reference has
-     to be: constant across subjects, proportional to the light.
-
-     EXP0 is the level a normally-exposed photo is scaled TO, so it must sit
-     near the clean-corpus p98 (measured 0.719..0.910, median 0.781) or every
-     existing calibration constant — the 0.54/0.25 centres, the 0.09
-     half-widths, DOM_MARGIN — would need re-deriving with it. Swept 0.72..0.87:
-     agreement is a broad plateau across 0.73..0.77 (74.8-76.4%) and falls away
-     on both sides (69.3% at 0.81, 62.2% at 0.87), so 0.75 is the plateau
-     centre, not a fitted peak. It is corroborated by a second, independent
-     measure: spread-across-people over exposure-drift-p90 is 1.09 here against
-     0.34 for the un-normalised axis — i.e. depth used to carry three times more
-     exposure noise than person signal, and now carries slightly more signal
-     than noise. HONEST SCOPE: nine faces. Re-derive when there are more.
-
-     The gain is clamped: beyond this range the frame is not merely mis-exposed,
-     it is clipped or black, and those are already refused above. */
-  const eQ=(a,p)=>{if(!a.length)return null;const b=[...a].sort((x,y)=>x-y);return b[Math.min(b.length-1,Math.floor(b.length*p))];};
-  const expRef=eQ(collect(fx,fy,.42*fs,.42*fs,()=>true).map(p=>p[3]),.98);
-  const EXP0=0.75;
-  const eGain=(expRef!=null&&expRef>.12)?Math.max(.55,Math.min(1.9,EXP0/expRef)):1;
-  const lSkinN=Math.min(1,lSkin*eGain), lHairN=Math.min(1,lHair*eGain),
-        lEyeN=(lEye!=null)?Math.min(1,lEye*eGain):null;
-  const contrast=Math.min(.6,Math.abs(lSkinN-lHairN));
+  const contrast=Math.min(.6,Math.abs(lSkin-lHair));
   /* clarity the way an analyst reads it: skin saturation + feature contrast,
      sharpened by a clearly-colored iris (calibrated to bright>0.44/soft<0.26) */
   const eyeClarity=eyeRGB?Math.max(0,Math.min(1,(eyeC-8)/30)):null;
@@ -2203,7 +2160,7 @@ function analyzePhoto(img){
   /* depth: skin leads, hair and eyes shade it the way an analyst weighs the
      whole head — deviations from mid keep the calibration center unmoved */
   const depthAxis=Math.max(0,Math.min(1,
-    lSkinN+.16*(lHairN-.42)+(lEyeN!=null?.08*(lEyeN-.30):0)-.15*contrast));
+    lSkin+.16*(lHair-.42)+(lEye!=null?.08*(lEye-.30):0)-.15*contrast));
   /* patch-skin LAB — the display read; the vote fields above stay on the
      whole-face scale the thresholds know */
   const [,aStar,bStar]=rgb2lab(R,Gc,B);
@@ -2248,7 +2205,7 @@ function analyzePhoto(img){
     hairHex:hairRGB?hex(hairRGB[0],hairRGB[1],hairRGB[2]):null,
     eyeHex:eyeRGB?hex(eyeRGB[0],eyeRGB[1],eyeRGB[2]):null,
     lipHex:lipRGB?hex(lipRGB[0],lipRGB[1],lipRGB[2]):null,
-    eyeName, lEye, eyeC, face:face, expRef, eGain};
+    eyeName, lEye, eyeC, face:face};
 }
 /* HAIR PROSE GUARD -----------------------------------------------------------
    SEASON_DETAILS[*].hair is written as an ASSERTION about the reader's own
