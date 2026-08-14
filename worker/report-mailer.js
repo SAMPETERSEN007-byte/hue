@@ -326,7 +326,7 @@ function renderEmail(season, unlockUrl) {
     </td></tr>
     <tr><td style="padding:18px 10px;font:400 12px/1.6 Arial,sans-serif;color:${SOFT};text-align:center">
       This email is your permanent copy — one purchase, no subscription.<br>
-      Questions or a refund within 30 days: email <a href="mailto:sampetersen909@gmail.com" style="color:${SOFT}">sampetersen909@gmail.com</a>.<br>
+      Questions or a refund within 30 days: email <a href="mailto:support@huebloom.app" style="color:${SOFT}">support@huebloom.app</a>.<br>
       <a href="https://huebloom.app/privacy.html" style="color:${SOFT}">Privacy</a> · <a href="https://huebloom.app/refunds.html" style="color:${SOFT}">Refunds</a>
     </td></tr>
   </table></td></tr></table></body></html>`;
@@ -342,7 +342,7 @@ function renderFallback(unlockUrl) {
     <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto"><tr><td style="background:${INK};border-radius:2px">
       <a href="${unlockUrl}" style="display:inline-block;padding:14px 26px;font:600 14px Arial,sans-serif;color:#fff9f4;text-decoration:none">Open my report</a>
     </td></tr></table>
-    <div style="font:400 12px/1.6 Arial,sans-serif;color:${SOFT};margin-top:22px">Questions or a refund within 30 days: email <a href="mailto:sampetersen909@gmail.com" style="color:${SOFT}">sampetersen909@gmail.com</a>.</div>
+    <div style="font:400 12px/1.6 Arial,sans-serif;color:${SOFT};margin-top:22px">Questions or a refund within 30 days: email <a href="mailto:support@huebloom.app" style="color:${SOFT}">support@huebloom.app</a>.</div>
   </td></tr></table></td></tr></table></body></html>`;
 }
 
@@ -352,7 +352,7 @@ async function sendEmail(env, to, subject, htmlBody) {
     headers: { 'Authorization': 'Bearer ' + env.RESEND_API_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: 'HUE <report@huebloom.app>',
-      reply_to: 'sampetersen909@gmail.com',
+      reply_to: 'support@huebloom.app',
       to: [to], subject, html: htmlBody
     })
   });

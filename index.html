@@ -124,8 +124,13 @@
   .q1-opt:hover{border-color:var(--accent);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
   .q1-opt:active{transform:translateY(1px)}
   .q1-opt:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-  .q1-alt{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
-  .q1-alt button{background:none;border:0;padding:4px 0;font-family:inherit;font-size:13px;
+  .q1-alt{display:flex;align-items:center;gap:10px;margin-top:4px;flex-wrap:wrap}
+  /* min-height 44px, not extra padding: these are the two escape-hatch answers on the
+     first question — the highest-traffic tap on the site — and at 25px tall they were
+     under the 44px iOS minimum, so a mis-tap on "I'm not sure" silently cost a quiz
+     start. The hit box grows; the 13px text and its underline do not move. */
+  .q1-alt button{background:none;border:0;padding:4px 6px;min-height:44px;
+    display:inline-flex;align-items:center;font-family:inherit;font-size:13px;
     color:var(--soft-strong);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
   .q1-alt button:hover{color:var(--accent)}
   .q1-alt span{color:var(--line)}
@@ -1042,7 +1047,7 @@ and with no disclosure shown. --></noscript>
         </details>
         <details>
           <summary>Do I need an account?</summary>
-          <div class="a">No account, no sign-up, no mailing list. The one email we ever send is the report copy that follows your purchase. Your result and your unlock live on your device — and if you ever lose access, <a href="mailto:sampetersen909@gmail.com?subject=Restore%20my%20HUE%20unlock">your receipt restores it</a>. You never buy twice.</div>
+          <div class="a">No account, no sign-up, no mailing list. The one email we ever send is the report copy that follows your purchase. Your result and your unlock live on your device — and if you ever lose access, <a href="mailto:support@huebloom.app?subject=Restore%20my%20HUE%20unlock">your receipt restores it</a>. You never buy twice.</div>
         </details>
       </div>
       <div style="text-align:center;margin-top:34px">
@@ -1130,7 +1135,7 @@ and with no disclosure shown. --></noscript>
       <div class="paid-row"><span class="paid-num">3</span><div>Tap <b>Open your full report</b> inside it<span class="paid-sub">That unlocks this site permanently, on whichever device you open it on.</span></div></div>
     </div>
 
-    <p class="paid-foot">Still nothing after a few minutes? Reply to your Stripe receipt and we will resend it — or email <a href="mailto:sampetersen909@gmail.com">sampetersen909@gmail.com</a>.</p>
+    <p class="paid-foot">Still nothing after a few minutes? Reply to your Stripe receipt and we will resend it — or email <a href="mailto:support@huebloom.app">support@huebloom.app</a>.</p>
     <div class="cta-row" style="justify-content:center">
       <button class="btn btn-ghost" onclick="show('intro')">Back to HUE</button>
     </div>
@@ -1142,7 +1147,7 @@ and with no disclosure shown. --></noscript>
   <div class="wrap">
     <div class="reveal-head">
       <span class="eyebrow">Your season is</span>
-      <h2 class="serif" id="seasonName">One of twelve</h2>
+      <h2 class="serif" id="seasonName">We found your season</h2>
       <p id="seasonDesc"></p>
       <p class="insight" id="insight" hidden></p>
       <div class="chips" id="chips"></div>
@@ -1194,7 +1199,7 @@ and with no disclosure shown. --></noscript>
         <div class="price" style="margin-top:12px">If it doesn't ring true, email us within 30 days and your $29.99 comes back — <a href="refunds.html" target="_blank" rel="noopener">no questions asked</a>.</div>
         <div class="price">One-time $29.99 · no subscription, ever · your photo never left your device</div>
         <div class="price">Your full report is also sent to your email — a permanent copy, on any device, forever.</div>
-        <div class="price">Checkout by Stripe — about 30 seconds, right back here. Paid elsewhere? <a href="mailto:sampetersen909@gmail.com?subject=Restore%20my%20HUE%20unlock&amp;body=Hi%20%E2%80%94%20I%20bought%20the%20HUE%20report.%20Forwarding%20my%20Stripe%20receipt%20%E2%80%94%20please%20restore%20my%20unlock.">Restore access</a></div>
+        <div class="price">Checkout by Stripe — about 30 seconds, right back here. Paid elsewhere? <a href="mailto:support@huebloom.app?subject=Restore%20my%20HUE%20unlock&amp;body=Hi%20%E2%80%94%20I%20bought%20the%20HUE%20report.%20Forwarding%20my%20Stripe%20receipt%20%E2%80%94%20please%20restore%20my%20unlock.">Restore access</a></div>
       </div>
       <div id="unlockedBadge" style="display:none">
         <div class="unlocked-note"><svg viewBox="0 0 24 24"><path d="M4.5 12.5l5 5L19.5 7"/></svg> Full report unlocked — it's yours forever on this device</div>
@@ -1230,7 +1235,7 @@ and with no disclosure shown. --></noscript>
           <a href="privacy.html">Privacy</a>
           <a href="terms.html">Terms</a>
           <a href="refunds.html">Refunds</a>
-          <a href="mailto:sampetersen909@gmail.com">Contact</a>
+          <a href="mailto:support@huebloom.app">Contact</a>
         </nav>
       </div>
     </div>
@@ -2681,7 +2686,7 @@ function render(season,fresh){
     $('lockTitle').textContent='Your '+season+' report is ready';
   }else{
     if(eyebrow)eyebrow.textContent='Your reading is complete';
-    $('seasonName').textContent='One of twelve';
+    $('seasonName').textContent='We found your season';
     $('cardSeason').textContent='Your season';
     /* generic, and not merely because season is null here: the per-season
        palette lengths differ, so an exact count was itself a clue */
@@ -2695,8 +2700,8 @@ function render(season,fresh){
        her result and this screen: a selfie. */
     const hasRead=!!(lastPhotoRead&&lastPhotoRead.skinHex);
     $('seasonDesc').textContent=hasRead
-      ?'Your skin, hair and eyes are read below — those tones are yours. Which of the twelve seasons they make you, and the '+shades+' shades that follow from it, are in your report.'
-      :'Your answers were enough to place you in one of the twelve. Which one, and the '+shades+' shades that follow from it, are in your report — and adding a selfie reads your actual skin, hair and eyes, free.';
+      ?'Your skin, hair and eyes are read below — those tones are yours. The season they make you, and the '+shades+' shades that follow from it, are in your report.'
+      :'Your answers were enough to name it. Your season, and the '+shades+' shades that follow from it, are in your report — and adding a selfie reads your actual skin, hair and eyes, free.';
     /* the insight is written ABOUT her season, so it leaks */
     const ins=$('insight');ins.hidden=true;ins.textContent='';
     $('unlockBtn').textContent='Reveal my season — '+PRICE_LABEL;
