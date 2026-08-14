@@ -164,6 +164,8 @@
   .m-label{position:absolute;bottom:18px;font-size:10.5px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;
     padding:6px 12px;border-radius:2px;background:rgba(247,242,239,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);pointer-events:none}
   .m-label-l{left:16px;color:var(--soft)}
+  /* both captions fade with the half they name — see paintLabels() in initMirror */
+  .m-label,.m-chip{transition:opacity .18s ease}
   .m-chip{position:absolute;right:14px;bottom:14px;display:flex;align-items:center;gap:7px;background:rgba(255,251,249,.9);
     -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-radius:2px;padding:8px 14px 8px 10px;box-shadow:var(--shadow-sm);pointer-events:none}
   .m-chip i{width:13px;height:13px;border-radius:50%;margin-right:-4px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.05)}
@@ -1439,8 +1441,20 @@ function rgb2lab(r,g,b){
 function initMirror(m,opts){
   if(!m)return;opts=opts||{};
   let cut=50;
-  const set=v=>{cut=Math.max(6,Math.min(94,v));m.style.setProperty('--cut',cut+'%');m.setAttribute('aria-valuenow',Math.round(cut));};
-  const chip=m.querySelector('.m-chip'),season=opts.season;
+  const chip=m.querySelector('.m-chip'),season=opts.season,lab=m.querySelector('.m-label-l');
+  /* EACH CAPTION NAMES THE HALF IT SITS ON, SO IT MUST LEAVE WITH THAT HALF.
+     --cut is how much of the frame is still the BEFORE (wrong-colour) image, so
+     the left label labels the left half and the season chip labels the right.
+     That reads correctly at the 50% default and becomes a lie at either end:
+     drag the divider left and the wrong-colour half is gone from under the words
+     "the wrong colors", which now sit on her CORRECT colours calling them wrong
+     — and drag it right and the season chip ends up over the bad drape, crediting
+     the season with it. Fade each out once its own side has mostly closed. */
+  const paintLabels=()=>{
+    if(lab)lab.style.opacity = cut<26 ? '0' : '1';
+    if(chip)chip.style.opacity = cut>74 ? '0' : '1';
+  };
+  const set=v=>{cut=Math.max(6,Math.min(94,v));m.style.setProperty('--cut',cut+'%');m.setAttribute('aria-valuenow',Math.round(cut));paintLabels();};
   if(chip&&season&&SEASONS[season])chip.innerHTML=SEASONS[season].band.map(c=>`<i style="background:${c}"></i>`).join('')+`<b>${season}</b>`;
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(opts.glide&&!reduce){
