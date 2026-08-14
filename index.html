@@ -2386,7 +2386,18 @@ const store={
        send and had to push her back through the quiz. Storing the three
        measured numbers means a returning visitor can buy immediately, and it
        leaks nothing: they are the same measurements the free panel prints. */
-    localStorage.setItem('hue',JSON.stringify({season:currentSeason,unlocked:isUnlocked,ut:unlockProof,via:channel,read:read,axes:lastAxes||undefined}));
+    /* NEVER CLOBBER A STORED SEASON WITH NULL. currentSeason is null for every
+       locked visitor now, and render() calls save() on its way out — so the
+       first repaint after boot was overwriting the season a PRE-DEPLOY visitor
+       already had on disk. That is the one thing checkout() falls back on to
+       sell her the right report without making her retake the quiz
+       (legacySeason), so wiping it silently demoted the highest-intent
+       returning visitor there is back to the top of the funnel.
+       This is the same hazard checkout()'s own ORDER MATTERS note is about,
+       arriving from a different direction: a null here means "not told yet",
+       never "no longer true". A real revoke clears it explicitly instead. */
+    const prevSeason=(()=>{try{const p=JSON.parse(localStorage.getItem('hue')||'null');return p&&p.season||null;}catch(e){return null;}})();
+    localStorage.setItem('hue',JSON.stringify({season:currentSeason||prevSeason,unlocked:isUnlocked,ut:unlockProof,via:channel,read:read,axes:lastAxes||undefined}));
   }catch(e){}},
   load(){try{return JSON.parse(localStorage.getItem('hue')||'null')}catch(e){return null}}
 };
@@ -2504,7 +2515,11 @@ async function run(img){
      palette length. Those lengths differ per season, so the number quietly
      narrowed twelve answers to a handful before she had paid for any of them.
      It also cannot be computed here any more, which is the point. */
-  const shades=SHADES_GENERIC;
+  /* "30+", not "30". The narration is the one place that states a number out
+     loud during the reveal, and real palettes are 32-34 — so a bare 30 is a
+     claim we then beat, which is the wrong direction for a line whose whole job
+     is to sound like an analyst counting. */
+  const shades=SHADES_GENERIC+'+';
   lastPhotoRead=photo;
   if(photo&&photo.face)centerPreviewOnFace(img,photo.face);
   let seq;
@@ -2596,7 +2611,7 @@ function runQuizOnly(){
   show('analyzing');
   lastInsight=null;lastPhotoRead=null;
   lastAxes=decideSeason(null);
-  playSteps(quizSeq(SHADES_GENERIC),()=>{render(null);
+  playSteps(quizSeq(SHADES_GENERIC+'+'),()=>{render(null);
     /* Shown locked on purpose: it names no season, and it is the one place
        that can tell a quiz-only visitor the selfie is still worth taking —
        which is both a better reading for her and the free measured receipt
@@ -3450,21 +3465,25 @@ async function makeShareCard(){
   return c;
 }
 async function shareResult(){
-  if(!currentSeason)return;
-  /* THE SHARE BUTTON WAS THE DOOR LEFT IN THE CURTAIN. render() stopped
-     printing the season on this screen, but the share control was left
-     standing beside it — and BOTH of its outputs name her season outright:
-     the caption reads "Turns out I'm a Deep Autumn", and makeShareCard()
-     paints that name in 130px type above her description, her full twelve
-     blade palette and a ring on her own dot. Even the download filename
-     carried it (hue-deep-autumn.png). The whole verdict was one visible tap
-     away — no devtools, no console, just the button we shipped.
+  /* THE LOCKED BRANCH GOES FIRST, AND MUST NOT REQUIRE A SEASON. It used to sit
+     below `if(!currentSeason)return;`, which was written when currentSeason was
+     set for everyone who had a result. It no longer is — it is null for every
+     locked visitor — so that guard silently killed the locked share entirely:
+     the button rendered, said "Share HUE with a friend", and did nothing at all
+     for ~100% of visitors. A dead button is worse than no button.
 
-     Locked, she shares HUE and not her answer: no card, no season, plain
-     link. The loop is worth keeping rather than deleting — it is the only
-     organic channel there is, and with zero sales nearly every visitor is
-     locked — but it can carry the invitation without carrying the product.
-     Unlocked, the full card is hers, and sharing it becomes one more thing
+     currentSeason was doing two jobs, "we have a result" and "we know the
+     answer", and the vault split them apart. Entitlement is the right question
+     here, so ask isUnlocked; the locked share needs no state beyond the URL.
+
+     Both of the unlocked outputs name the season outright — the caption reads
+     "Turns out I'm a Deep Autumn", and makeShareCard() paints that name in
+     130px type above her description, her full twelve-blade palette and a ring
+     on her own dot, with the season in the download filename too. So locked,
+     she shares HUE and not her answer: no card, no season, plain link. The
+     loop is worth keeping rather than deleting — it is the only organic
+     channel there is — but it can carry the invitation without carrying the
+     product. Unlocked, the card is hers, and sharing it becomes one more thing
      the $29.99 buys. */
   if(!isUnlocked){
     const t=`I just had my colors read by HUE. Find yours (2 min): ${SITE_URL}`;
@@ -3475,6 +3494,15 @@ async function shareResult(){
     }
     if(navigator.clipboard){navigator.clipboard.writeText(t).catch(()=>{});}
     toast('Link copied — paste it anywhere to share.');
+    return;
+  }
+  /* Unlocked but season-less is a real state, not a paranoid one: an unlock can
+     arrive by email on a device that never took the quiz, and grantUnlock()
+     leaves currentSeason null there while applyUnlocked() still shows the share
+     block. Without this the card would be captioned "Turns out I'm a null" and
+     makeShareCard() would throw on SEASONS[null]. */
+  if(!currentSeason||!SEASONS[currentSeason]){
+    toast('Take the two-minute quiz first — then your card is ready to share.');
     return;
   }
   const text=`Turns out I'm a ${currentSeason}. Find yours (2 min): ${SITE_URL}`;
@@ -3503,7 +3531,14 @@ async function shareResult(){
     else{if(navigator.clipboard)navigator.clipboard.writeText(text).catch(()=>{});toast('Copied — paste it anywhere to share.');}
   }
 }
-function reset(){$('file').value='';$('fileUp').value='';st.i=0;st.answers=[];st.warm=st.light=st.chroma=0;lastInsight=null;lastPhotoRead=null;lastTemp=null;photoTries=0;const sn=$('sisterNote');if(sn)sn.hidden=true;document.documentElement.style.setProperty('--tint','#f7f2ef');show('intro');}
+/* lastAxes goes with the rest of the derived state. It is the measurement
+   checkout() sells against, so leaving it behind after a Start over meant the
+   module still held the reading from a run the visitor had explicitly
+   abandoned. Nothing reaches checkout() without passing through the result
+   screen, which recomputes it — so this is hygiene rather than a live bug, but
+   "the answer we would bill for" is the last variable that should survive a
+   reset by accident. */
+function reset(){$('file').value='';$('fileUp').value='';st.i=0;st.answers=[];st.warm=st.light=st.chroma=0;lastInsight=null;lastPhotoRead=null;lastTemp=null;lastAxes=null;photoTries=0;const sn=$('sisterNote');if(sn)sn.hidden=true;document.documentElement.style.setProperty('--tint','#f7f2ef');show('intro');}
 /* Retake only the PHOTO after a borderline read. reset() would also wipe the
    quiz, which is wrong here: the answers were never the ambiguous part, the
    undertone was. Clearing both file inputs is load-bearing — re-picking the
@@ -3650,10 +3685,29 @@ buildDecks();
         ?'Payment received — take the quiz to reveal your full report.'
         :'Your unlock is active — take the quiz to reveal your full report.');
     }
-  }else if(saved&&saved.season&&SEASONS[saved.season]){
-    /* highest-intent visitor: saw their result, didn't pay, came back */
-    render(saved.season,false);   /* repaint of a result already seen — no reveal analytics */
-    toast('Welcome back — your '+saved.season+' result is saved.');
+  }else if(saved&&((saved.axes&&typeof saved.axes.depth==='number')||(saved.season&&SEASONS[saved.season]))){
+    /* Highest-intent visitor there is: saw their result, didn't pay, came back.
+       And until this line was fixed, the way HUE greeted her was by giving her
+       the answer for free —
+         toast('Welcome back — your '+saved.season+' result is saved.')
+       — under a headline reading "One of twelve", on the very screen built to
+       sell that word. It also called render(saved.season) on the NOT-unlocked
+       branch, which is the one place left that set currentSeason without an
+       entitlement.
+
+       It survived the move because it reads saved.season, and saved.season is
+       only ever populated now for someone who used the site BEFORE the
+       classifier moved server-side. New visitors store season:null, so no test
+       written against a fresh browser could see it — but every returning
+       pre-deploy visitor hit it, and they are exactly the people most likely
+       to buy.
+
+       Her device does still hold the season this site handed it back when the
+       reveal was free, and checkout() deliberately still reads it so she can
+       buy without retaking the quiz (see legacySeason). We do not pretend to
+       un-give what was already given — we just stop re-serving it. */
+    render(null,false);   /* repaint of a result already seen — no reveal analytics */
+    toast('Welcome back — your reading is saved.');
   }else if(p.get('start')==='quiz'){
     startQuiz();
   }
@@ -3835,7 +3889,15 @@ buildDecks();
     isUnlocked=false;unlockProof=null;
     currentSeason=null;   /* the browser is not entitled to know it any more */
     lastInsight=null;     /* it is written about the season, so it goes too */
-    store.save();
+    /* Explicit, because store.save() now PRESERVES a stored season rather than
+       letting a null overwrite it (see the note there). That default is right
+       for a locked visitor who was simply never told; it is wrong here, where
+       the entitlement has just been withdrawn. A revoke that leaves the answer
+       on disk is not a revoke. Her measured read stays — that is hers either
+       way — and the axes stay so she can still buy. */
+    try{const p=JSON.parse(localStorage.getItem('hue')||'{}');
+        p.season=null;p.unlocked=false;p.ut=null;
+        localStorage.setItem('hue',JSON.stringify(p));}catch(e){}
     render(null,false);
   }
 })();
