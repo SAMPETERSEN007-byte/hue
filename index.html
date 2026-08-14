@@ -706,6 +706,32 @@
   }
 </style>
 <script>
+/* STRIP THE CREDENTIAL BEFORE ANY TRACKER CAN READ THE URL. ------------------
+   This must stay the FIRST script in the document, above the analytics block
+   below. The buyer returns from Stripe to /?sid=cs_live_... and opens her email
+   link at /?t=<token>, and that token is base64url JSON, not ciphertext —
+   atob() on the payload yields {"v":1,"sid":"cs_live_...","season":"Deep Autumn"}.
+
+   The strip used to live in the boot IIFE ~2,900 lines and 250KB below here.
+   On a warm cache fbevents.js and array.js execute long before the parser gets
+   there, so Meta's PageView went out with dl= carrying the whole token and
+   PostHog's $pageview recorded it as $current_url. That put her season in Meta,
+   which privacy.html expressly forbids, and parked a permanent bearer
+   credential for the $29.99 report in two third-party logs.
+
+   HUE_Q keeps the original query for the code that legitimately needs it: the
+   boot block reads the unlock token from it, and readVia() below reads via /
+   utm_source / fbclid / gclid / ttclid out of it. Stripping without stashing
+   would have made every paid ad click resolve to '' and report as direct —
+   fixing a leak by destroying the only attribution instrument the site has. */
+window.HUE_Q = location.search;
+(function(){
+  var q = new URLSearchParams(window.HUE_Q);
+  if (q.get('t') || q.get('sid') || q.get('unlocked') === '1' || q.get('via') || q.get('start'))
+    history.replaceState(null, '', location.pathname);
+})();
+</script>
+<script>
 /* Analytics — LIVE (owner-activated 2026-07-14). PostHog in cookieless mode:
    persistence 'memory' (no cookies, no stored identifier), autocapture off,
    session recording off. Only the explicit track() events + pageviews fire;
@@ -736,7 +762,9 @@ window.HUE_VIA_RE=/^[a-z0-9_-]{1,24}$/i;
    The result is folded into the Stripe client_reference_id, so it must satisfy
    HUE_VIA_RE; utm_source is sanitised rather than trusted. */
 window.readVia=function(){
-  var p=new URLSearchParams(location.search);
+  /* HUE_Q, not location.search — the strip at the top of <head> has already
+     cleared the address bar by the time this runs. */
+  var p=new URLSearchParams(window.HUE_Q!==undefined?window.HUE_Q:location.search);
   var v=p.get('via')||'';
   if(window.HUE_VIA_RE.test(v))return v.toLowerCase();
   var u=(p.get('utm_source')||'').toLowerCase().replace(/[^a-z0-9_-]/g,'').slice(0,24);
@@ -2529,9 +2557,18 @@ async function run(img){
   if(photo&&photo.face)centerPreviewOnFace(img,photo.face);
   let seq;
   if(photo){
-    const lean=photo.hue!=null
-      ? (photo.hue>55?'leaning warm':photo.hue<49?'leaning cool':'near neutral')
-      : (photo.warmSig>18?'leaning warm':photo.warmSig<-6?'leaning cool':'near neutral');
+    /* NARRATE THE WORK, NEVER THE AXES. This sequence used to print the undertone
+       lean in words and then "Depth index NN · contrast NN". Two of the three axes,
+       full-screen, to every unpaid visitor — and index.html ships SEASONS with the
+       decode table in its own desc strings ("Warm and deep" IS Deep Autumn). A sweep
+       of the worker's mapSeason over the realistic chroma range found that warm/cool
+       plus the printed depth index names exactly ONE season for 60 of the 101
+       indices, and the unique bands are the population tails: deep skin lands near
+       index 78, very fair blonde near 14. She could read her $29.99 verdict off the
+       loading screen and collect the palette from the free twelve-season grid.
+       render() already states the rule at "REVEAL ZERO AXES, NOT FEWER"; this path
+       had simply never been held to it. Anything interpolated here must describe
+       what is being done, never what was measured. */
     seq=[
       ["Checking your light — clear",700],
       ["Locating your face — "+photo.faceCells+" regions read",900],
@@ -2541,9 +2578,9 @@ async function run(img){
     if(photo.lipHex)seq.push(["Sampling your lip undertone",850]);
     if(photo.hairHex)seq.push(["Measuring hair depth against skin",900]);
     seq.push(
-      ["Reading undertone — "+lean,1050],
+      ["Weighing your undertone evidence",1050],
       ["Cross-checking your five answers",950],
-      ["Depth index "+Math.round((1-photo.l)*100)+" · contrast "+Math.round(photo.contrast*100),1050],
+      ["Setting your depth & clarity",1050],
       ["Narrowing to your season family",1050],
       ["Ruling out neighboring seasons",1250],
       ["Composing your palette — "+shades+" shades",1150]);
@@ -2748,6 +2785,19 @@ function render(season,fresh){
        verdict itself instead: the panel exists to justify the season, so
        naming the season's own temperature is always defensible. */
     const sv=(lastTemp&&lastTemp.skinVote!=null)?lastTemp.skinVote:null;
+    /* LOCKED MEANS NO AXIS WORDS AT ALL. season is null on the locked path, and
+       /Spring|Autumn/.test(null) tests the STRING "null" — so seasonWarm was
+       always false there, and the three branches below fell out as: a cool
+       measurement printed "cool undertone" verbatim, a warm one was flipped to
+       "neutral" by the contradiction guard, and a restored session with no vote
+       asserted "cool undertone" to everyone. So the panel leaked the undertone
+       axis to exactly the cool half, told the warm half something untrue, and
+       guessed for the restored. All three are the same root cause: a guard that
+       asks "does this contradict her season?" cannot run before she has one.
+       Below, locked suppresses the caption instead of guessing at it. hairWord
+       goes too — "deep"/"light" is the depth vocabulary verbatim, and depth is
+       the axis that, paired with undertone, pins the season outright. */
+    const locked=!season;
     const seasonWarm=/Spring|Autumn/.test(season);
     let toneWord = sv==null ? (seasonWarm?'warm undertone':'cool undertone')
                  : sv>=1.2 ? 'warm undertone'
@@ -2758,14 +2808,17 @@ function render(season,fresh){
        "Neutral" is the honest word for that disagreement; the opposite
        temperature is not, and reading "cool undertone" under True Autumn is
        what makes a customer ask for their money back. */
-    if(toneWord===(seasonWarm?'cool undertone':'warm undertone'))toneWord='neutral undertone';
+    if(!locked&&toneWord===(seasonWarm?'cool undertone':'warm undertone'))toneWord='neutral undertone';
     const hairWord=mp.hairL<.25?'deep':mp.hairL<.5?'medium depth':'light';
-    const sw=[['Skin',mp.skinHex,toneWord],
-              mp.hairHex?['Hair',mp.hairHex,hairWord]:null,
+    const sw=[['Skin',mp.skinHex,locked?null:toneWord],
+              mp.hairHex?['Hair',mp.hairHex,locked?null:hairWord]:null,
               mp.eyeHex?['Eyes',mp.eyeHex,mp.eyeName]:null,
               mp.lipHex?['Lips',mp.lipHex,'natural tone']:null].filter(Boolean);
+    /* cap is null while locked — render the swatch and the feature name, and no
+       word for it. Interpolating a null would print the literal "null" both in
+       the caption and, worse, into the aria-label a screen-reader user hears. */
     $('measuredRow').innerHTML=sw.map(([t,h,cap])=>
-      `<div class="msw"><i style="background:${h}" role="img" aria-label="${t}: ${cap}, ${h.toUpperCase()}"></i><b>${t}</b><small>${cap}</small></div>`).join('');
+      `<div class="msw"><i style="background:${h}" role="img" aria-label="${t}: ${cap?cap+', ':''}${h.toUpperCase()}"></i><b>${t}</b>${cap?`<small>${cap}</small>`:''}</div>`).join('');
     /* NAME WHAT THE PHOTO DID NOT GIVE US. -----------------------------------
        An unreadable feature is silently dropped from the row above, so the
        reader cannot distinguish "your eyes are unremarkable" from "we never saw
@@ -3564,7 +3617,9 @@ buildDecks();
 /* ---- boot: restore unlock state (incl. return from Stripe), saved results,
         and ?via=<channel> / ?start=quiz deep links ---- */
 (function(){
-  const p=new URLSearchParams(location.search);
+  /* HUE_Q — the address bar was cleared by the strip at the top of <head>, so
+     location.search is empty by now and every branch below would read null. */
+  const p=new URLSearchParams(window.HUE_Q!==undefined?window.HUE_Q:location.search);
   const saved=store.load();
   /* ---- entitlement ---------------------------------------------------------
      A bare ?unlocked=1 used to grant the full $29.99 report to anyone who typed
@@ -3639,7 +3694,8 @@ buildDecks();
      the param or inherited it from a previous one. The data can then answer the
      attribution question instead of pre-deciding it. */
   if(channel){try{posthog.register({hue_via:channel,hue_via_src:(readVia()?'param':'stored')});}catch(e){}}
-  if(fromStripe||unlockToken||viaParam||p.get('start'))history.replaceState(null,'',location.pathname);
+  /* The strip that used to live here now runs as the first script in <head> —
+     down here it was ~2,900 lines too late to beat a warm-cache tracker. */
   /* ?unlocked=1 is BOTH the Stripe success redirect AND the permanent restore
      link minted in the report email, so this block runs again every time a
      buyer re-opens their email on this device. Counting it each time inflated

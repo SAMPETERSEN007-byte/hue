@@ -1,0 +1,26 @@
+# GitHub Pages publishes this repository's ROOT (build_type "legacy", branch main,
+# path /), so every tracked file here is a public URL on huebloom.app. That included
+# worker/ — https://huebloom.app/worker/report-mailer.js returned HTTP 200 with the
+# Cloudflare Worker's entire 84KB source, mapSeason and the twelve SEASON_DETAILS
+# among it, plus wrangler.toml and all four test files.
+#
+# That undid the whole point of faba55a ("Compute the verdict where it is sold").
+# Moving the classifier server-side stops the BROWSER from knowing the season; it
+# does nothing if the server's source is downloadable from the same domain. An
+# unpaid visitor already holds her three axes in page scope to mint the checkout
+# ref, so mapSeason(warm, depth, chroma) was three lines and $0 away. robots.txt
+# says "Allow: /", so it was crawlable too.
+#
+# Jekyll's default excludes do not cover worker/. This does.
+#
+# Do NOT "simplify" this to a .nojekyll file. That disables Jekyll entirely, which
+# means no exclusion happens and worker/ becomes public again — the opposite of the
+# intent. wrangler deploy reads worker/ from DISK, not from the Pages build output,
+# so excluding it here has no effect on deploying the worker.
+#
+# The constants in those files (calibration thresholds, the 12-season partition,
+# the golden digest) were publicly served from 8/13 to 8/14 and may sit in a search
+# index or the Wayback Machine. Treat them as burned: no future security property
+# may rest on them being secret. No credential was in them, so nothing needs rotating.
+exclude:
+  - worker
