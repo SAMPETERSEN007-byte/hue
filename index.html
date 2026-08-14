@@ -969,13 +969,13 @@ and with no disclosure shown. --></noscript>
             <div class="rb-row"><b>A wardrobe system</b><span>Your neutrals, metals, prints — and three combinations to steal.</span></div>
           </div>
           <p class="rb-terms">One-time $29.99 · 30-day money-back guarantee · no subscription</p>
-          <button class="btn btn-cream" onclick="startQuiz()">Find my season — free</button>
+          <button class="btn btn-cream" onclick="startQuiz()">Read my colors — free</button>
           <!-- "colors" plural promised more than the free result delivers: it names
                exactly one, the hero, deliberately — two nameless swatches beside it
                prove the specificity without handing over anything wearable. Naming a
                second colour to match the copy would give away the product; matching
                the copy to the product costs nothing and keeps the promise true. -->
-          <p class="rb-note">Your season and your hero color come free. The report is there if you want the rest.</p>
+          <p class="rb-note">The reading is free — we measure your skin, hair and eyes from your photo. Your season, and the colors that follow from it, are the report.</p>
         </div>
         <figure class="rb-card-wrap">
           <div class="card rb-card">
@@ -1132,7 +1132,7 @@ and with no disclosure shown. --></noscript>
   <div class="wrap">
     <div class="reveal-head">
       <span class="eyebrow">Your season is</span>
-      <h2 class="serif" id="seasonName">Deep Autumn</h2>
+      <h2 class="serif" id="seasonName">One of twelve</h2>
       <p id="seasonDesc"></p>
       <p class="insight" id="insight" hidden></p>
       <div class="chips" id="chips"></div>
@@ -1188,7 +1188,7 @@ and with no disclosure shown. --></noscript>
       </div>
       <div id="shareBlock" style="display:none;text-align:center;margin-top:18px">
         <h3 class="serif" style="font-size:22px;margin-bottom:6px">Know someone who wears the wrong colors?</h3>
-        <p class="price" style="margin:0 0 12px">Send them the free quiz — it takes two minutes.</p>
+        <p class="price" style="margin:0 0 12px">Send them the quiz — it takes two minutes.</p>
         <button class="btn btn-ink btn-block" onclick="shareResult()">Share my season</button>
       </div>
       <button class="restart" id="shareLink" style="margin:14px auto 0" onclick="shareResult()">Share my season</button>
@@ -1202,7 +1202,7 @@ and with no disclosure shown. --></noscript>
     <div class="foot-grid">
       <div>
         <div class="mark"><span class="fan-mark"><i style="background:#e0866f"></i><i style="background:#c9a86a"></i><i style="background:#7f9a8f"></i><i style="background:#7a6f9c"></i></span> HUE</div>
-        <p class="foot-tag">Personal color analysis in the 12-season tradition — free to try, $29.99 for the full report. Your photo never leaves your device.</p>
+        <p class="foot-tag">Personal color analysis in the 12-season tradition. Free reading, $29.99 for your season and full palette. Your photo never leaves your device.</p>
       </div>
       <div class="foot-cols">
         <nav class="foot-col" aria-label="Explore">
@@ -2595,11 +2595,53 @@ function vivid(pal){let best=pal[0],bc=-1;for(const p of pal){const n=parseInt(p
 function render(season,fresh){
   if(fresh!==false)track('price_exposed',{px:PRICE_CENTS,season:season});
   currentSeason=season;const d=SEASONS[season];
-  document.documentElement.style.setProperty('--tint',d.tint);
-  $('seasonName').textContent=season;$('cardSeason').textContent=season;$('seasonDesc').textContent=d.desc;
-  const ins=$('insight');ins.hidden=!lastInsight;ins.textContent=lastInsight||'';
-  $('unlockBtn').textContent='Unlock my '+season+' report — '+PRICE_LABEL;
-  $('lockTitle').textContent='Your '+season+' report is ready';
+  /* THE VERDICT IS THE PRODUCT, SO THE VERDICT IS WHAT IS SOLD.
+     This screen used to print the season, its description, its colour band and
+     three chips reading e.g. "Deep / Autumn / Warm undertone" - for free. That
+     is the whole answer, decomposed into its three axes, and a Deep Autumn
+     palette is one search away once you know the words. HUE was giving away the
+     only thing nobody else can tell her and charging for the elaboration. In a
+     real draping you cannot hear your season and then decline to pay.
+     82 visitors and 0 sales: "demonstrate value first" is not an untested
+     theory here, it is a tested and failed one.
+
+     WHAT STAYS FREE IS THE RECEIPT, NOT THE VERDICT - the tones measured off
+     her own face (#measured, below). Those are facts about HER, they prove the
+     engine did real work on her actual photo, and they leak nothing: a skin hex
+     does not name a season.
+
+     REVEAL ZERO AXES, NOT FEWER. With 12 seasons over three axes (warm/cool,
+     light/deep, bright/soft), disclosing any TWO pins the answer to about two
+     candidates. So the chips go entirely rather than getting shorter, and
+     --tint is held neutral: washing the page in her season's colour announces
+     warm-versus-cool without ever naming it.
+
+     HONEST LIMIT: this is a curtain, not a vault. SEASONS and SEASON_DETAILS
+     ship in this file and analyzePhoto runs in her browser, so a devtools
+     console still reaches the answer. Closing that for real means moving the
+     analysis into the worker. The curtain is still worth hanging - the same was
+     true of the localStorage bypass closed this morning, and virtually nobody
+     opens a console - but nobody should mistake it for enforcement. */
+  const revealVerdict = isUnlocked;
+  const eyebrow = document.querySelector('#result .reveal-head .eyebrow');
+  document.documentElement.style.setProperty('--tint', revealVerdict ? d.tint : '#F2EDE4');
+  if(revealVerdict){
+    if(eyebrow)eyebrow.textContent='Your season is';
+    $('seasonName').textContent=season;$('cardSeason').textContent=season;$('seasonDesc').textContent=d.desc;
+    const ins=$('insight');ins.hidden=!lastInsight;ins.textContent=lastInsight||'';
+    $('unlockBtn').textContent='Unlock my '+season+' report — '+PRICE_LABEL;
+    $('lockTitle').textContent='Your '+season+' report is ready';
+  }else{
+    if(eyebrow)eyebrow.textContent='Your reading is complete';
+    $('seasonName').textContent='One of twelve';
+    $('cardSeason').textContent='Your season';
+    const shades=(SEASON_DETAILS[season]&&SEASON_DETAILS[season].palette)?SEASON_DETAILS[season].palette.length:33;
+    $('seasonDesc').textContent='Your skin, hair and eyes are read below — those tones are yours. Which of the twelve seasons they make you, and the '+shades+' shades that follow from it, are in your report.';
+    /* the insight is written ABOUT her season, so it leaks */
+    const ins=$('insight');ins.hidden=true;ins.textContent='';
+    $('unlockBtn').textContent='Reveal my season — '+PRICE_LABEL;
+    $('lockTitle').textContent='Your result is ready';
+  }
   /* method is read from the preview <img>, which a restored session never
      populates — so a restore reported every photo-based result as 'quiz-only'.
      Gated with the rest of the reveal analytics rather than patched, since a
@@ -2612,10 +2654,18 @@ function render(season,fresh){
      later, once there is enough volume to leave the learning phase on it.
      Meta gets the event only — no season, no method, no read. */
   if(fresh!==false)fbtrackCustom('ViewResult');
-  $('cardBand').innerHTML=d.band.map(c=>`<i style="background:${c}"></i>`).join('');
-  const parts=season.split(' ');
-  $('chips').innerHTML=[parts[0], parts[1], /Spring|Autumn/.test(season)?'Warm undertone':'Cool undertone']
-    .map(t=>`<span class="chip">${t}</span>`).join('');
+  /* Band and chips are BOTH verdict, not receipt. The band is five shades of
+     her palette; the chips spell the answer out in words. Gated with the name
+     above - see the reveal comment in render(). */
+  if(revealVerdict){
+    $('cardBand').innerHTML=d.band.map(c=>`<i style="background:${c}"></i>`).join('');
+    const parts=season.split(' ');
+    $('chips').innerHTML=[parts[0], parts[1], /Spring|Autumn/.test(season)?'Warm undertone':'Cool undertone']
+      .map(t=>`<span class="chip">${t}</span>`).join('');
+  }else{
+    $('cardBand').innerHTML='';
+    $('chips').innerHTML='';
+  }
   /* No sister card. An ambiguous undertone is now sent back for a better photo
      BEFORE the reveal (see run()), so anything that reaches this point is a
      verdict we stand behind. Customers pay for the call, not for a shortlist. */
@@ -2683,16 +2733,20 @@ function render(season,fresh){
     }
     mEl.hidden=false;
   }else{mEl.hidden=true;const n=$('measuredNote');if(n)n.hidden=true;}
-  /* free "taste" (variant C): one NAMED hero color + two nameless swatches —
-     proves the report's specificity without handing over anything wearable */
+  /* The hero colour was the last leak. A NAMED shade is not a taste of the
+     report, it is the answer with extra steps: "Roast Pumpkin" is one search
+     away from Deep Autumn, and the shade names are season-specific by design.
+     Unlocked, it is the best thing on the page; locked, it is the verdict
+     given away. So the name is gated and only the unnamed swatches remain —
+     they still prove the engine produced something specific to her. */
   const det=SEASON_DETAILS&&SEASON_DETAILS[season],tlbl=document.querySelector('#shareCard .lbl');
-  if(det&&det.palette&&det.palette.length){
+  if(det&&det.palette&&det.palette.length&&revealVerdict){
     const hero=vivid(det.palette);
     if(tlbl)tlbl.textContent='Your hero color — '+hero.name;
     $('teaser').innerHTML=`<div class="sw hero" style="background:${hero.hex}"><small>${hero.name}</small></div>`+d.teaser.slice(0,2).map(c=>`<div class="sw" style="background:${c}"></div>`).join('');
   }else{
-    if(tlbl)tlbl.textContent='A few of your colors';
-    $('teaser').innerHTML=d.teaser.slice(0,3).map(c=>`<div class="sw" style="background:${c}"></div>`).join('');
+    if(tlbl)tlbl.textContent=revealVerdict?'A few of your colors':'Sealed until it\u2019s yours';
+    $('teaser').innerHTML=d.teaser.slice(0,3).map(c=>`<div class="sw ph"></div>`).join('');
   }
   if(isUnlocked)applyUnlocked(); else applyLocked();
   store.save();
@@ -2715,17 +2769,17 @@ function applyLocked(){
     <div class="avoid-teaser">${det.avoid.map(()=>'<div class="c"></div>').join('')}<span>six colors, revealed in your report</span></div>
   </div>
   <div class="report-card compact compact-lock" role="button" tabindex="0" aria-label="Unlock the makeup edit — ${PRICE_LABEL}" onclick="checkout()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();checkout();}">
-    <div class="cpt-head"><div><div class="cpt-eyebrow">The Compact &middot; No. 2</div><h4 class="serif">The makeup edit</h4><div class="rc-sub">Already pressed and waiting in your ${currentSeason} report.</div></div><span class="cpt-stamp">HUE</span></div>
+    <div class="cpt-head"><div><div class="cpt-eyebrow">The Compact &middot; No. 2</div><h4 class="serif">The makeup edit</h4><div class="rc-sub">Already pressed and waiting in your report.</div></div><span class="cpt-stamp">HUE</span></div>
     <div class="pantray frost">
       <div class="tray-label">Lips <em>&middot; four shades</em></div>
       ${panGrid(det.makeup.lips,true)}
       <div class="tray-label" style="margin-top:14px">Blush</div>
       ${panGrid(det.makeup.blush,true)}
-      <div class="frost-veil"><b>Sealed until it&rsquo;s yours</b><span>Your four lip shades, two blushes, eye colors and the exact foundation ask — named, matched to ${currentSeason}, yours forever.</span><em>Unlock — ${PRICE_LABEL}</em></div>
+      <div class="frost-veil"><b>Sealed until it&rsquo;s yours</b><span>Your four lip shades, two blushes, eye colors and the exact foundation ask — named, matched to your season, yours forever.</span><em>Unlock — ${PRICE_LABEL}</em></div>
     </div>
   </div>`:''}
   <div class="report-card">
-    <h4 class="serif">Inside the ${currentSeason} report</h4>
+    <h4 class="serif">Inside your report</h4>
     <div class="rc-sub">Everything unlocks the moment you're back from checkout.</div>
     ${['Your makeup formula: the foundation ask, four lips, two blushes, eyes','30+ named shades with exact hex codes','The six colors quietly working against you — and why','Hair direction to take to your colorist','Your wardrobe system: neutrals, metals, prints + three combinations to steal'].map(t=>`<div class="mrow"><svg viewBox="0 0 24 24"><path d="M4.5 12.5l5 5L19.5 7"/></svg><span>${t}</span></div>`).join('')}
   </div>`;
@@ -3271,7 +3325,7 @@ async function makeShareCard(){
   }
   // footer — three elements with breathing room; domain large enough to survive story compression
   x.fillStyle='#2b2129';x.font='italic 400 44px "Bodoni Moda", serif';
-  x.fillText('Find yours — free, in two minutes', W/2, 1700);
+  x.fillText('Find yours in two minutes', W/2, 1700);
   x.font='600 52px "General Sans", sans-serif';x.fillStyle='#2b2129';
   x.fillText(SITE_URL.replace('https://','').replace(/\/$/,''), W/2, 1775);
   const mk=['#e0866f','#c9a86a','#7f9a8f','#7a6f9c'];mk.forEach((col,i)=>{rr(x,W/2-46+i*20,1845,12,44,6);x.fillStyle=col;x.fill();});
@@ -3280,7 +3334,7 @@ async function makeShareCard(){
 }
 async function shareResult(){
   if(!currentSeason)return;
-  const text=`Turns out I'm a ${currentSeason}. Find your season free (2 min): ${SITE_URL}`;
+  const text=`Turns out I'm a ${currentSeason}. Find yours (2 min): ${SITE_URL}`;
   window._shareText=text;
   try{
     const c=await makeShareCard();
