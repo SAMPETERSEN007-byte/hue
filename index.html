@@ -3791,11 +3791,44 @@ buildDecks();
      means the email-link path and the ?sid= return path cannot double-count
      each other. localStorage covers repeat visits on this device; eventID
      covers everything else. */
+  /* cyrb53 — a stable, one-way 53-bit digest of the Stripe session id.
+     WHY A HASH AND NOT THE sid ITSELF: /session?sid=... mints an unlock token for
+     any session Stripe reports as paid, so the raw sid is a bearer credential for
+     a $29.99 report. Sending it to PostHog would park that credential in a third
+     party's logs — the same mistake the ?t= token strip at the top of <head> exists
+     to prevent. The digest dedups just as well and unlocks nothing. */
+  function purchaseKey(s){
+    var h1=0xdeadbeef,h2=0x41c6ce57,ch;
+    for(var i=0;i<s.length;i++){ch=s.charCodeAt(i);
+      h1=Math.imul(h1^ch,2654435761); h2=Math.imul(h2^ch,1597334677);}
+    h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+    h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+    return (4294967296*(2097151&h2)+(h1>>>0)).toString(36);
+  }
+
   function reportPurchase(sid){
     if(!sid)return;
     var key='hue_paid_'+sid;
     try{ if(localStorage.getItem(key)==='1')return; localStorage.setItem(key,'1'); }catch(e){}
-    track('purchase_completed',{via:channel||'direct',px:PRICE_CENTS});
+    /* pid MAKES THE COUNT RECOVERABLE, because the fire cannot be prevented.
+       The localStorage guard above only covers THIS device. A buyer who opens her
+       report email on her phone after buying on a laptop, or who clears her
+       browser, legitimately re-enters this function — and Meta survives it because
+       it dedups on eventID, while PostHog had nothing at all. Measured 8/14:
+       9 purchase_completed events against 3 real Stripe charges, and more
+       purchases (9) than checkout_clicked (7), which is impossible for humans.
+
+       PostHog's own ingestion dedup cannot fix this: it requires uuid + event name
+       + timestamp + distinct_id to ALL match, and persistence:'memory' (a
+       deliberate, privacy.html-documented choice) mints a fresh distinct_id on
+       every page load, with a different timestamp each visit. So the repair has to
+       work at QUERY time, not ingestion time:
+
+         SELECT count(DISTINCT properties.pid) FROM events
+         WHERE event = 'purchase_completed'
+
+       That is correct no matter how many times the event fires. */
+    track('purchase_completed',{via:channel||'direct',px:PRICE_CENTS,pid:purchaseKey(sid)});
     /* Meta gets value, currency and the dedup id — never the season. */
     try{ if(window.fbq&&window.HUE_META_ON)
       fbq('track','Purchase',{value:PRICE_CENTS/100,currency:'USD'},{eventID:sid}); }catch(e){}
