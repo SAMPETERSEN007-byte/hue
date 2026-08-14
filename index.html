@@ -323,9 +323,15 @@
   .lockwrap{position:relative;margin-top:6px}
   /* locked palette: neutral placeholder tiles — the real shades never render
      until unlock (blur leaks color; these leak nothing) */
-  .locked .sw.ph{background:linear-gradient(135deg,#efe7e0,#faf4ee)}
-  .locked .sw.ph:nth-child(3n+1){background:linear-gradient(135deg,#ece2da,#f7f0ea)}
-  .locked .sw.ph:nth-child(3n+2){background:linear-gradient(135deg,#f2eae2,#e9dfd6)}
+  /* Not scoped to .locked. The placeholder tile is now used in TWO places:
+     inside #full (which carries .locked) and inside #teaser (.palette.taste,
+     which does not) since the hero shade went behind the paywall. Scoped, the
+     teaser's three tiles matched no background rule at all and rendered as
+     empty white boxes with a shadow — they read as images that failed to
+     load, on the exact screen that asks for $29.99. */
+  .sw.ph{background:linear-gradient(135deg,#efe7e0,#faf4ee)}
+  .sw.ph:nth-child(3n+1){background:linear-gradient(135deg,#ece2da,#f7f0ea)}
+  .sw.ph:nth-child(3n+2){background:linear-gradient(135deg,#f2eae2,#e9dfd6)}
   .lockover{position:absolute;inset:-6px;display:grid;place-content:center;text-align:center;gap:10px;
     background:radial-gradient(120% 120% at 50% 42%,var(--card) 40%,transparent);border-radius:2px;padding:18px}
   .lockover .key{font-size:26px}.lockover b{font-size:19px;font-family:"Bodoni Moda";font-weight:500}
@@ -1154,7 +1160,11 @@ and with no disclosure shown. --></noscript>
       <div class="band" id="cardBand"></div>
       <div class="inner">
         <div class="lbl">A few of your colors</div>
-        <h3 class="serif" id="cardSeason">Deep Autumn</h3>
+        <!-- Ships as the locked wording. #seasonName above was moved off its
+             hardcoded season name when the verdict went behind the paywall;
+             this twin was missed, and sat in view-source on every load. No
+             season is named anywhere in this section, comments included. -->
+        <h3 class="serif" id="cardSeason">Your season</h3>
         <div class="palette taste" id="teaser"></div>
 
         <div class="section-label" id="fullLabel">Your full palette · 30+ shades</div>
@@ -1191,7 +1201,7 @@ and with no disclosure shown. --></noscript>
         <p class="price" style="margin:0 0 12px">Send them the quiz — it takes two minutes.</p>
         <button class="btn btn-ink btn-block" onclick="shareResult()">Share my season</button>
       </div>
-      <button class="restart" id="shareLink" style="margin:14px auto 0" onclick="shareResult()">Share my season</button>
+      <button class="restart" id="shareLink" style="margin:14px auto 0" onclick="shareResult()">Share HUE with a friend</button>
     </div>
     <button class="restart" onclick="reset()">Start over</button>
   </div>
@@ -2624,7 +2634,10 @@ function render(season,fresh){
      opens a console - but nobody should mistake it for enforcement. */
   const revealVerdict = isUnlocked;
   const eyebrow = document.querySelector('#result .reveal-head .eyebrow');
-  document.documentElement.style.setProperty('--tint', revealVerdict ? d.tint : '#F2EDE4');
+  /* #f7f2ef is the value :root and reset() both use — not a new neutral. The
+     locked screen sat on a different cream from every other screen on the
+     site, which reads as a rendering fault rather than a held-back reveal. */
+  document.documentElement.style.setProperty('--tint', revealVerdict ? d.tint : '#f7f2ef');
   if(revealVerdict){
     if(eyebrow)eyebrow.textContent='Your season is';
     $('seasonName').textContent=season;$('cardSeason').textContent=season;$('seasonDesc').textContent=d.desc;
@@ -2636,7 +2649,17 @@ function render(season,fresh){
     $('seasonName').textContent='One of twelve';
     $('cardSeason').textContent='Your season';
     const shades=(SEASON_DETAILS[season]&&SEASON_DETAILS[season].palette)?SEASON_DETAILS[season].palette.length:33;
-    $('seasonDesc').textContent='Your skin, hair and eyes are read below — those tones are yours. Which of the twelve seasons they make you, and the '+shades+' shades that follow from it, are in your report.';
+    /* "read below" is only true if a photo was actually read. On the quiz-only
+       path ("No selfie right now? Estimate my season from my answers") there is
+       no measured panel to point at, so this promised a receipt that is not on
+       the page — and with the verdict now gated, that left her looking at a
+       screen that named nothing, showed nothing and asked for $29.99.
+       Same trade, told honestly, plus the one thing that would improve both
+       her result and this screen: a selfie. */
+    const hasRead=!!(lastPhotoRead&&lastPhotoRead.skinHex);
+    $('seasonDesc').textContent=hasRead
+      ?'Your skin, hair and eyes are read below — those tones are yours. Which of the twelve seasons they make you, and the '+shades+' shades that follow from it, are in your report.'
+      :'Your answers were enough to place you in one of the twelve. Which one, and the '+shades+' shades that follow from it, are in your report — and adding a selfie reads your actual skin, hair and eyes, free.';
     /* the insight is written ABOUT her season, so it leaks */
     const ins=$('insight');ins.hidden=true;ins.textContent='';
     $('unlockBtn').textContent='Reveal my season — '+PRICE_LABEL;
@@ -2745,8 +2768,16 @@ function render(season,fresh){
     if(tlbl)tlbl.textContent='Your hero color — '+hero.name;
     $('teaser').innerHTML=`<div class="sw hero" style="background:${hero.hex}"><small>${hero.name}</small></div>`+d.teaser.slice(0,2).map(c=>`<div class="sw" style="background:${c}"></div>`).join('');
   }else{
+    /* Two different branches share this else: LOCKED (hide the colours), and
+       unlocked-with-no-palette (a data gap \u2014 show what we have). Blanking
+       both meant an unlocked buyer would get three empty tiles if her season
+       ever lost its SEASON_DETAILS entry. All twelve have one today, so this
+       is a landmine rather than a live bug \u2014 but it is the paid state, and it
+       should degrade to colour, not to nothing. */
     if(tlbl)tlbl.textContent=revealVerdict?'A few of your colors':'Sealed until it\u2019s yours';
-    $('teaser').innerHTML=d.teaser.slice(0,3).map(c=>`<div class="sw ph"></div>`).join('');
+    $('teaser').innerHTML=revealVerdict
+      ? d.teaser.slice(0,3).map(c=>`<div class="sw" style="background:${c}"></div>`).join('')
+      : d.teaser.slice(0,3).map(()=>`<div class="sw ph"></div>`).join('');
   }
   if(isUnlocked)applyUnlocked(); else applyLocked();
   store.save();
@@ -2784,7 +2815,10 @@ function applyLocked(){
     ${['Your makeup formula: the foundation ask, four lips, two blushes, eyes','30+ named shades with exact hex codes','The six colors quietly working against you — and why','Hair direction to take to your colorist','Your wardrobe system: neutrals, metals, prints + three combinations to steal'].map(t=>`<div class="mrow"><svg viewBox="0 0 24 24"><path d="M4.5 12.5l5 5L19.5 7"/></svg><span>${t}</span></div>`).join('')}
   </div>`;
   $('payBlock').style.display='';$('unlockedBadge').style.display='none';
+  /* "Share my season" was a promise this state cannot keep — she has not been
+     told her season. Locked, the button shares HUE (see shareResult). */
   $('shareBlock').style.display='none';$('shareLink').style.display='';
+  $('shareLink').textContent='Share HUE with a friend';
   $('fullLabel').textContent='Your full palette · '+(det&&det.palette?det.palette.length+' shades':'30+ shades');
 }
 /* Resolve the colors NAMED inside a combo string ("Cream ivory silk blouse +
@@ -3334,6 +3368,32 @@ async function makeShareCard(){
 }
 async function shareResult(){
   if(!currentSeason)return;
+  /* THE SHARE BUTTON WAS THE DOOR LEFT IN THE CURTAIN. render() stopped
+     printing the season on this screen, but the share control was left
+     standing beside it — and BOTH of its outputs name her season outright:
+     the caption reads "Turns out I'm a Deep Autumn", and makeShareCard()
+     paints that name in 130px type above her description, her full twelve
+     blade palette and a ring on her own dot. Even the download filename
+     carried it (hue-deep-autumn.png). The whole verdict was one visible tap
+     away — no devtools, no console, just the button we shipped.
+
+     Locked, she shares HUE and not her answer: no card, no season, plain
+     link. The loop is worth keeping rather than deleting — it is the only
+     organic channel there is, and with zero sales nearly every visitor is
+     locked — but it can carry the invitation without carrying the product.
+     Unlocked, the full card is hers, and sharing it becomes one more thing
+     the $29.99 buys. */
+  if(!isUnlocked){
+    const t=`I just had my colors read by HUE. Find yours (2 min): ${SITE_URL}`;
+    window._shareText=t;
+    if(navigator.share){
+      try{await navigator.share({title:'HUE — personal color analysis',text:t,url:SITE_URL});return;}
+      catch(e){if(e.name==='AbortError')return;}
+    }
+    if(navigator.clipboard){navigator.clipboard.writeText(t).catch(()=>{});}
+    toast('Link copied — paste it anywhere to share.');
+    return;
+  }
   const text=`Turns out I'm a ${currentSeason}. Find yours (2 min): ${SITE_URL}`;
   window._shareText=text;
   try{
@@ -3639,14 +3699,28 @@ buildDecks();
       .catch(()=>{});
   }
 
-  /* Undo a restore the worker refused. Her season and her measured read stay —
-     she still owns those and wiping them punishes the wrong person — but the
-     entitlement goes and the paywall repaints. Guarded on a rendered season
-     because applyLocked() writes into report DOM that render() creates. */
+  /* Undo a restore the worker refused. The entitlement goes and the paywall
+     repaints; her measured read stays, since that is hers either way and
+     wiping it punishes the wrong person.
+
+     MUST re-run render(), not applyLocked(). applyLocked() only repaints the
+     report body — #full, #report, the pay block. Everything the paywall now
+     actually guards is written by render(): the season name, its description,
+     the three axis chips, the colour band, the named hero shade and --tint.
+     So calling applyLocked() alone re-locked the report and left the VERDICT
+     sitting on screen, which is the whole product.
+
+     That made the forged-token path cheaper than before this screen was
+     gated, not dearer: one line in a console —
+       localStorage.hue='{"season":"Deep Autumn","unlocked":true,"ut":"x"}'
+     — booted straight into the full reveal, and the worker's rejection then
+     tidied away the report while leaving "Deep Autumn", "Warm undertone" and
+     "Your hero color — Roast Pumpkin" in place. render() repaints the head
+     from revealVerdict and calls applyLocked() itself on the way out. */
   function revokeUnlock(){
     isUnlocked=false;unlockProof=null;
     store.save();
-    if(currentSeason&&SEASONS[currentSeason])applyLocked();
+    if(currentSeason&&SEASONS[currentSeason])render(currentSeason,false);
   }
 })();
 </script>
