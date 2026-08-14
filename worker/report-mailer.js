@@ -53,16 +53,97 @@ const SEASON_DETAILS=/*__SEASON_DATA__*/{"Light Spring":{"palette":[{"hex":"#ffe
 const SLUGS = {};
 for (const name of Object.keys(SEASONS)) SLUGS[name.toLowerCase().replace(/ /g, '-')] = name;
 
+/* --classifier-start-- (worker/test-classifier.js and worker/test-season-from-ref.js
+   extract this exact block; keep the markers or those tests fail loudly rather
+   than silently testing nothing)
+
+   THE VERDICT IS NOW COMPUTED WHERE IT IS SOLD.
+
+   mapSeason lived in index.html, which meant the browser held the function that
+   turns three measured numbers into the $29.99 answer. Gating the reveal was
+   therefore a curtain and never a vault: one console call reached the verdict
+   without paying. It now lives here and ships to nobody.
+
+   What did NOT move is the measurement. analyzePhoto still runs on her device
+   and her photo still never leaves it — that promise is on the landing page, in
+   the footer and in privacy.html, and it stays true. The browser measures; the
+   worker judges. She carries three numbers to checkout (see axesFromRef) and
+   the answer comes back only against a paid, signed token.
+
+   Those three numbers are receipt, not verdict: depth and chroma are already
+   published free in the measured panel, and knowing them names no season
+   without the thresholds below — which is precisely what no longer ships. */
+function mapSeason(warm, depth, chroma) {
+  /* Professional 12-season logic (Sci\ART / 12 Blueprints): the DOMINANT
+     characteristic is the MOST EXTREME of value/chroma — not value-checked-first.
+     Hue is the secondary that picks the sister within that pole. Value is never a
+     secondary; a "True" (hue-dominant) season splits by CHROMA, not depth. The
+     0.54/0.35 neutral centers and 0.09 half-widths keep the v4.2 photo calibration:
+     |sv|>1 and |sc|>1 are exactly the old deep/light and bright/soft thresholds.
+
+     MOVED VERBATIM from index.html. The constants below are calibrated against
+     a measured corpus and a measured noise floor — see DOM_MARGIN. Do not
+     "tidy" them: they are measurements, not preferences. */
+  const sv = (0.54 - depth) / 0.09;   // + deep, - light
+  const sc = (chroma - 0.25) / 0.09;  // + bright, - soft
+  const vX = Math.abs(sv) > 1, cX = Math.abs(sc) > 1;
+  let dom = null; // null = neither extreme -> hue dominant -> a True season
+  /* DOMINANCE NEEDS A MARGIN, AND A TIE GOES TO THE BETTER-MEASURED AXIS.
+     Across nine repeated before/after pairs — same face, same light, same
+     camera, only the drape changes, so the frame-to-frame spread IS sensor
+     noise — sd(sv)=0.088 and sd(sc)=0.168 in half-width units, so
+     sd(|sv|-|sc|)=0.189 and 3 sigma=0.57. Below that the measurement cannot say
+     which characteristic dominates; when it cannot, defer to VALUE, which is
+     measured 1.9x more precisely.
+     !! 0.57 is 3 sigma AT THE CURRENT 0.09 half-widths. Anything that rescales
+     depth or chroma invalidates it. */
+  const DOM_MARGIN = 0.57;
+  if (vX || cX) dom = ((vX && cX) ? (Math.abs(sc) - Math.abs(sv) < DOM_MARGIN) : vX) ? (sv > 0 ? 'deep' : 'light') : (sc > 0 ? 'bright' : 'soft');
+  if (warm) return dom === 'deep' ? "Deep Autumn" : dom === 'light' ? "Light Spring" : dom === 'bright' ? "Bright Spring" : dom === 'soft' ? "Soft Autumn" : sc >= 0 ? "True Spring" : "True Autumn";
+  return dom === 'deep' ? "Deep Winter" : dom === 'light' ? "Light Summer" : dom === 'bright' ? "Bright Winter" : dom === 'soft' ? "Soft Summer" : sc >= 0 ? "True Winter" : "True Summer";
+}
+
+/* The axes segment index.html now mints instead of a season slug:
+     a<warm><depth6><chroma6>      e.g. a1 054200 028100
+   Digits and one lowercase letter only, so it survives Stripe's
+   client_reference_id character rules and the .toLowerCase() applied before
+   this runs. Fixed width, so it can never be confused with a channel name.
+
+   SIX DECIMALS, NOT FOUR. Quantising the axes in transit can only change a
+   verdict for a measurement sitting within one quantum of a dominance
+   boundary. At 4dp that window is 5e-5, i.e. 5.6e-4 in half-width units, and a
+   sweep of 321,602 synthetic measurements found 226 inputs (0.07%) whose
+   season flipped purely from the rounding. That is already ~150x below the
+   measured sensor noise (sd(sv)=0.088) and so invisible in practice — but it
+   costs four characters to make it ~1e-5 half-widths instead, which is far
+   below any float the browser could have produced anyway. Cheap enough that
+   there is no reason to accept the larger window. */
+function axesFromRef(ref) {
+  const m = /(?:^|_)a([01])(\d{6})(\d{6})(?:_|$)/.exec(ref);
+  if (!m) return null;
+  return { warm: m[1] === '1', depth: +m[2] / 1000000, chroma: +m[3] / 1000000 };
+}
+
 function seasonFromRef(ref) {
-  /* ref = <channel>_<season-slug>_px<cents>; older refs were <channel>_<slug> or a
-     bare <slug>. Scan segments from the END so a channel name that happens to
-     contain a season string can never shadow the real season. */
+  /* ref = <channel>_a<axes>_px<cents> since the classifier moved server-side.
+     The axes form is tried FIRST and is the only one new sales produce.
+
+     The slug scan is kept for refs minted by the old build: a Payment Link a
+     buyer left open, or a checkout begun before the deploy and completed after
+     it. Dropping it would have sent those buyers the generic fallback email —
+     the exact $29.99-for-a-letter-that-names-nothing failure the comment in
+     checkout() was written about. It costs nine lines to not do that to them.
+     Scan from the END so a channel name containing a season string can never
+     shadow the real season. */
+  const axes = axesFromRef(ref);
+  if (axes) return mapSeason(axes.warm, axes.depth, axes.chroma);
   const parts = ref.split('_');
   for (let i = parts.length - 1; i >= 0; i--) {
     if (SLUGS[parts[i]]) return SLUGS[parts[i]];
   }
   return null;
 }
+/* --classifier-end-- */
 
 /* ---------- unlock entitlement ----------------------------------------------
    Before this existed, https://huebloom.app/?unlocked=1 unlocked the full
@@ -373,6 +454,20 @@ export default {
     /* ---- entitlement check, called by the site before it unlocks ---- */
     if (url.pathname === '/verify') {
       const claims = await readUnlockToken(env, url.searchParams.get('t') || '');
+      /* SEASON RECOVERY. The token's season comes from the Stripe ref, and
+         Stripe silently drops a client_reference_id it dislikes — so a paid
+         token can legitimately carry season:null. That used not to matter:
+         the browser knew the season itself and simply rendered from memory.
+         Now that the browser is season-blind, a null here means a buyer who
+         paid $29.99 and is shown "take the quiz" instead of a report.
+
+         So the page may re-present its measurement, and we name the season
+         from that. The ENTITLEMENT is still proven only by the signed token —
+         this parameter cannot unlock anything on its own, it only chooses
+         which report an already-proven purchase receives. A buyer nominating
+         her own axes is not an attack; she paid for exactly one report. */
+      const alt = claims && !claims.season ? seasonFromRef((url.searchParams.get('a') || '').toLowerCase()) : null;
+      if (alt) claims.season = alt;
       /* sid is returned so the page can report the conversion exactly once. A
          verified token is server-side proof that this Stripe session was paid,
          which makes this the one place a Purchase can be counted honestly
@@ -408,7 +503,11 @@ export default {
       } catch (e) { return json({ ok: false, reason: 'stripe-unreachable' }, 502); }
       /* Only a genuinely paid session mints a token. */
       if (s.payment_status !== 'paid') return json({ ok: false, reason: 'not-paid' }, 403);
-      const season = seasonFromRef((s.client_reference_id || '').toLowerCase());
+      /* Same SEASON RECOVERY as /verify: a ref Stripe dropped must not cost a
+         paid buyer her report. payment_status === 'paid' was already checked
+         above, so the purchase is proven before the axes are consulted. */
+      const season = seasonFromRef((s.client_reference_id || '').toLowerCase())
+        || seasonFromRef((url.searchParams.get('a') || '').toLowerCase());
       /* The buyer's own address, echoed back so the confirmation screen can name
          the inbox to go looking in. Only ever their own — never anyone else's. */
       const paidEmail = (s.customer_details && s.customer_details.email) || null;

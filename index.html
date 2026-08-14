@@ -372,6 +372,10 @@
   .pans.round .pan{width:64px;height:64px;aspect-ratio:auto}
   .pan-cell{text-align:center;min-width:0}
   .pan{aspect-ratio:1;border-radius:9px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.32),inset 0 2px 5px rgba(43,33,41,.16),0 1px 0 rgba(255,255,255,.65);outline:1px solid rgba(43,33,41,.07)}
+  /* the empty pan behind the frost — see panGridBlank(). Same tone family as
+     .sw.ph so the locked report reads as one sealed surface. */
+  .pan.ph{background:linear-gradient(135deg,#efe7e0,#faf4ee)}
+  .pans.round .pan-cell:nth-child(2n) .pan.ph{background:linear-gradient(135deg,#ece2da,#f7f0ea)}
   .pans.round .pan{border-radius:50%}
   .pan-cell b{display:block;font-size:8.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--soft-strong);margin-top:7px;line-height:1.35}
   .counter-note{border-left:2px solid var(--accent);background:#fbf3f1;padding:12px 15px;margin-top:14px;font-size:13.5px;line-height:1.6}
@@ -2245,50 +2249,17 @@ function hairAdvice(det,mp){
     +'the measurement and it stands. What follows is the direction '+currentSeason+' moves in '
     +'from that base, a colorist brief rather than a description of the hair you have.</p>'+body;
 }
-function mapSeason(warm,depth,chroma){
-  /* Professional 12-season logic (Sci\ART / 12 Blueprints): the DOMINANT
-     characteristic is the MOST EXTREME of value/chroma — not value-checked-first.
-     Hue is the secondary that picks the sister within that pole. Value is never a
-     secondary; a "True" (hue-dominant) season splits by CHROMA, not depth. The
-     0.54/0.35 neutral centers and 0.09 half-widths keep the v4.2 photo calibration:
-     |sv|>1 and |sc|>1 are exactly the old deep/light and bright/soft thresholds. */
-  const sv=(0.54-depth)/0.09;   // + deep, - light
-  const sc=(chroma-0.25)/0.09;  // + bright, - soft  (centre moved with the contrast term)
-  const vX=Math.abs(sv)>1, cX=Math.abs(sc)>1;
-  let dom=null; // null = neither value nor chroma extreme -> hue dominant -> a True season
-  /* DOMINANCE NEEDS A MARGIN, AND A TIE GOES TO THE BETTER-MEASURED AXIS.
-     When value and chroma are BOTH extreme the old rule broke the tie with a
-     bare argmax over |sv| vs |sc|. Those two are noisy and NOT independent
-     (chromaAxis is mostly contrast, and contrast is built from the same lSkin
-     and lHair that build depthAxis), and the two outcomes sit at opposite
-     corners of the map: Light Spring and Soft Autumn share neither word nor
-     palette. So a 0.05 difference decided the whole season, and it did -
-     gal2-silver's two frames are the same woman under two drapes and she came
-     out Light Spring in one and Soft Autumn in the other.
-     The margin is MEASURED, not chosen, and no season label is involved in it.
-     Across the nine repeated before/after pairs - same face, same light, same
-     camera, only the drape changes, so the frame-to-frame spread IS sensor
-     noise - sd(depth)=0.0079 and sd(chroma)=0.0151, i.e. sd(sv)=0.088 and
-     sd(sc)=0.168 in half-width units, so sd(|sv|-|sc|)=0.189 and 3 sigma=0.57.
-     Below that the measurement cannot say which characteristic dominates.
-     When it cannot, defer to VALUE rather than invent a third answer: value is
-     measured 1.9x more precisely than chroma, so preferring the better-measured
-     axis is itself a measurement statement. Falling through to the hue-dominant
-     True branch would NOT be - that branch reads chroma sign only and carries
-     no depth term, so it would name a measurably deep face with a medium-depth
-     season (an 8.54% inversion region, measured).
-     !! 0.57 is 3 sigma AT THE CURRENT 0.09 half-widths. Anything that rescales
-     depth or chroma - folding contrast into depthAxis, moving a centre or a
-     half-width - invalidates it. Re-derive from the same nine pairs or it
-     silently becomes an arbitrary constant. The corpus CANNOT pin it: every
-     margin above 0.05 gives identical verdicts on all 20 corpus photos. Off the
-     corpus it is load-bearing (it moves 6.5% of the map at 0.57), so it rests
-     entirely on the noise measurement above. */
-  const DOM_MARGIN=0.57;
-  if(vX||cX) dom = ((vX&&cX) ? (Math.abs(sc)-Math.abs(sv) < DOM_MARGIN) : vX) ? (sv>0?'deep':'light') : (sc>0?'bright':'soft');
-  if(warm) return dom==='deep'?"Deep Autumn":dom==='light'?"Light Spring":dom==='bright'?"Bright Spring":dom==='soft'?"Soft Autumn":sc>=0?"True Spring":"True Autumn";
-  return dom==='deep'?"Deep Winter":dom==='light'?"Light Summer":dom==='bright'?"Bright Winter":dom==='soft'?"Soft Summer":sc>=0?"True Winter":"True Summer";
-}
+/* mapSeason lived here. It is now in worker/report-mailer.js, between the
+   --classifier-- markers, and is tested by worker/test-classifier.js.
+
+   It was moved rather than duplicated. While it shipped in this file the
+   paywall could only ever be a curtain: SEASONS is right there and one
+   console call to mapSeason() turned the free measurement into the paid
+   verdict. Deleting it is what makes the gate real, so DO NOT reintroduce a
+   copy here for convenience — a second copy is the same hole, plus drift.
+
+   The browser measures (decideSeason, above, returns the three axes); the
+   worker judges. Her photo still never leaves this device. */
 function decideSeason(photo){
   // Blend the quiz (reliable for undertone) with the photo (depth + chroma).
   let warmScore=st.warm, depth=0.55, chroma=0.34, nud=0.05, skinVote=null;
@@ -2344,16 +2315,30 @@ function decideSeason(photo){
      safer read — never a silent warm default */
   const warm = warmScore!==0 ? warmScore>0
              : (photo ? (photo.hue!=null?photo.hue>53:photo.warmSig>6) : false);
-  const primary=mapSeason(warm, depth, chroma);
-  /* temperature honesty: a pro won't call warm vs cool on an ambiguous drape.
-     When the undertone axis barely committed (|warmScore| inside the band), the
-     sister season — same depth & clarity, flipped temperature — is the honest
-     co-answer; the reveal offers both instead of forcing one. Confident reads
-     stay a single, deterministic call (engine-test 4c). The threshold is inlined
-     so this function extracts standalone into the test harness. */
-  lastTemp={primary, sister:mapSeason(!warm, depth, chroma), warm, skinVote,
-            borderline:Math.abs(warmScore)<1.0};
-  return primary;
+  /* RETURNS THE AXES, NOT THE ANSWER. -----------------------------------------
+     Everything above this line is MEASUREMENT — reading her face and weighing
+     it against her five answers. That belongs on her device: it needs the
+     photo, and the photo never leaves.
+
+     The last step, turning three numbers into one of twelve names, does not
+     need the photo. It was the only reason this browser knew the verdict it
+     was charging $29.99 to reveal, which made the paywall a curtain: one
+     console call to mapSeason() and the answer was free. mapSeason now lives
+     in worker/report-mailer.js and ships to nobody. checkout() carries these
+     three numbers to Stripe (see axesToken) and the worker names the season
+     when there is a paid session to name it for.
+
+     Depth and chroma are already published free in the measured panel, so
+     handing them back here gives away nothing that was not already given:
+     they are receipt. The thresholds that turn them into a verdict are what
+     no longer ships.
+
+     lastTemp keeps only what the UI actually reads — borderline (the retake
+     gate below) and skinVote (the measured panel's undertone caption). It used
+     to also carry primary/sister, computed by two more mapSeason calls; nothing
+     read them, and they cannot be computed here any more. */
+  lastTemp={warm, skinVote, borderline:Math.abs(warmScore)<1.0};
+  return {warm, depth, chroma};
 }
 
 /* ---- monetization ----
@@ -2372,7 +2357,10 @@ const SEASON_DETAILS=/*__SEASON_DATA__*/{"Light Spring":{"palette":[{"hex":"#ffe
 
 /* unlockProof = the per-purchase HMAC token this device has verified with the
    worker. It IS the entitlement: restore requires it, so every save carries it. */
-let currentSeason=null, isUnlocked=false, channel=null, lastTemp=null, unlockProof=null;
+/* lastAxes = {warm,depth,chroma}, the measured result of decideSeason(). Since
+   mapSeason moved to the worker this — not a season name — is what the browser
+   holds until she pays, and it is what checkout() carries to Stripe. */
+let currentSeason=null, isUnlocked=false, channel=null, lastTemp=null, unlockProof=null, lastAxes=null;
 const store={
   save(){try{
     /* the measured tones ride along so a returning visitor keeps their
@@ -2392,7 +2380,13 @@ const store={
     /* Carry the unlock token through every save. It is the proof of purchase on
        this device: restore requires {unlocked:true, ut}, so dropping it here
        would silently revoke a real buyer the next time render() ran. */
-    localStorage.setItem('hue',JSON.stringify({season:currentSeason,unlocked:isUnlocked,ut:unlockProof,via:channel,read:read}));
+    /* AXES PERSIST, AND THEY ARE WHAT CHECKOUT NEEDS. currentSeason is null
+       until she pays, so a locked visitor who reloads has no season to save —
+       and before axes were stored, checkout() after a reload had nothing to
+       send and had to push her back through the quiz. Storing the three
+       measured numbers means a returning visitor can buy immediately, and it
+       leaks nothing: they are the same measurements the free panel prints. */
+    localStorage.setItem('hue',JSON.stringify({season:currentSeason,unlocked:isUnlocked,ut:unlockProof,via:channel,read:read,axes:lastAxes||undefined}));
   }catch(e){}},
   load(){try{return JSON.parse(localStorage.getItem('hue')||'null')}catch(e){return null}}
 };
@@ -2485,7 +2479,12 @@ async function run(img){
      theater, paced like an analyst working: quick mechanical reads first,
      slower deliberation at the end */
   track('selfie_analyzed',{readable:!!photo});
-  const season=decideSeason(photo);
+  /* AXES, NOT A SEASON. decideSeason no longer names the answer — the worker
+     does, at checkout. Everything from here to the reveal is deliberately
+     season-blind, which is what makes the locked screen honest: it cannot leak
+     a verdict it was never told. */
+  const axes=decideSeason(photo);
+  lastAxes=axes;
   /* An undecided undertone is a bad READ, not a bad answer, so it is handled
      exactly like bad light: ask for the shot that settles it, on the same
      two-retake budget. Past that budget we commit to the primary rather than
@@ -2500,7 +2499,12 @@ async function run(img){
     track('selfie_rejected',{reason:'undertone',attempt:photoTries});
     return;
   }
-  const shades=shadeCountFor(season);
+  /* A GENERIC COUNT, BECAUSE THE EXACT ONE IS A CLUE. The narration used to
+     read "Composing your palette — 33 shades", taken from the season's own
+     palette length. Those lengths differ per season, so the number quietly
+     narrowed twelve answers to a handful before she had paid for any of them.
+     It also cannot be computed here any more, which is the point. */
+  const shades=SHADES_GENERIC;
   lastPhotoRead=photo;
   if(photo&&photo.face)centerPreviewOnFace(img,photo.face);
   let seq;
@@ -2526,13 +2530,16 @@ async function run(img){
   }else{
     seq=quizSeq(shades);
   }
-  lastInsight=photo?makeInsight(photo,season):"That light was hard to read, so this leans on your answers — retake in daylight anytime to sharpen it.";
-  playSteps(seq,()=>render(season));
+  /* The insight is written ABOUT the season, so it cannot be composed until
+     the season is known — which is now after payment. grantUnlock() builds it
+     from lastPhotoRead the moment the worker names the season. It was hidden
+     while locked anyway; this just stops computing something unusable. */
+  lastInsight=photo?null:"That light was hard to read, so this leans on your answers — retake in daylight anytime to sharpen it.";
+  playSteps(seq,()=>render(null));
 }
-function shadeCountFor(season){
-  const det=SEASON_DETAILS[season];
-  return det&&det.palette?det.palette.length:30;
-}
+/* One number for every season. See the SHADES_GENERIC comment in run(): the
+   per-season count was a free clue, and is no longer computable here. */
+const SHADES_GENERIC=30;
 function quizSeq(shades){
   return [
     ["Reading your five answers",900],
@@ -2588,8 +2595,12 @@ function runQuizOnly(){
   document.querySelector('.ring').classList.add('noimg');
   show('analyzing');
   lastInsight=null;lastPhotoRead=null;
-  const season=decideSeason(null);
-  playSteps(quizSeq(shadeCountFor(season)),()=>{render(season);
+  lastAxes=decideSeason(null);
+  playSteps(quizSeq(SHADES_GENERIC),()=>{render(null);
+    /* Shown locked on purpose: it names no season, and it is the one place
+       that can tell a quiz-only visitor the selfie is still worth taking —
+       which is both a better reading for her and the free measured receipt
+       this screen otherwise has nothing to show. */
     const ins=$('insight');ins.hidden=false;
     ins.innerHTML='Estimated from your five answers — add a daylight selfie anytime to sharpen it. <a href="#" onclick="show(\'capture\');return false;">Add my selfie</a>';
   });
@@ -2603,8 +2614,11 @@ function vivid(pal){let best=pal[0],bc=-1;for(const p of pal){const n=parseInt(p
    the funnel is read from, and it teaches Meta's optimiser from people who have
    already converted or already declined. */
 function render(season,fresh){
-  if(fresh!==false)track('price_exposed',{px:PRICE_CENTS,season:season});
-  currentSeason=season;const d=SEASONS[season];
+  /* season is NULL for every locked visitor now — this page is not told the
+     answer until the worker returns it against a paid token (grantUnlock).
+     Every read of `d` below is therefore guarded or sits inside revealVerdict. */
+  if(fresh!==false)track('price_exposed',{px:PRICE_CENTS});
+  currentSeason=season;const d=season?SEASONS[season]:null;
   /* THE VERDICT IS THE PRODUCT, SO THE VERDICT IS WHAT IS SOLD.
      This screen used to print the season, its description, its colour band and
      three chips reading e.g. "Deep / Autumn / Warm undertone" - for free. That
@@ -2626,13 +2640,19 @@ function render(season,fresh){
      --tint is held neutral: washing the page in her season's colour announces
      warm-versus-cool without ever naming it.
 
-     HONEST LIMIT: this is a curtain, not a vault. SEASONS and SEASON_DETAILS
-     ship in this file and analyzePhoto runs in her browser, so a devtools
-     console still reaches the answer. Closing that for real means moving the
-     analysis into the worker. The curtain is still worth hanging - the same was
-     true of the localStorage bypass closed this morning, and virtually nobody
-     opens a console - but nobody should mistake it for enforcement. */
-  const revealVerdict = isUnlocked;
+     IT IS NOW A VAULT RATHER THAN A CURTAIN. The first version of this gate
+     only stopped render() from PRINTING the season; SEASONS shipped in this
+     file and so did mapSeason, so a console still reached the answer and this
+     comment said so. mapSeason now lives in worker/report-mailer.js and ships
+     to nobody, and `season` is null on this path — there is no longer an answer
+     in the browser to print, guess or read out of a variable.
+
+     SEASONS and SEASON_DETAILS still ship, deliberately: they are twelve
+     published palettes, the same way any colour house publishes its seasons,
+     and the unlocked report renders from them offline. A table of twelve
+     answers is not the answer to WHICH ONE IS HERS — that is the mapping, and
+     the mapping is what left. */
+  const revealVerdict = isUnlocked && !!d;
   const eyebrow = document.querySelector('#result .reveal-head .eyebrow');
   /* #f7f2ef is the value :root and reset() both use — not a new neutral. The
      locked screen sat on a different cream from every other screen on the
@@ -2648,7 +2668,9 @@ function render(season,fresh){
     if(eyebrow)eyebrow.textContent='Your reading is complete';
     $('seasonName').textContent='One of twelve';
     $('cardSeason').textContent='Your season';
-    const shades=(SEASON_DETAILS[season]&&SEASON_DETAILS[season].palette)?SEASON_DETAILS[season].palette.length:33;
+    /* generic, and not merely because season is null here: the per-season
+       palette lengths differ, so an exact count was itself a clue */
+    const shades=SHADES_GENERIC+'+';
     /* "read below" is only true if a photo was actually read. On the quiz-only
        path ("No selfie right now? Estimate my season from my answers") there is
        no measured panel to point at, so this promised a receipt that is not on
@@ -2775,9 +2797,11 @@ function render(season,fresh){
        is a landmine rather than a live bug \u2014 but it is the paid state, and it
        should degrade to colour, not to nothing. */
     if(tlbl)tlbl.textContent=revealVerdict?'A few of your colors':'Sealed until it\u2019s yours';
+    /* d is null for every locked visitor, so the placeholder count cannot come
+       from her palette \u2014 three, the same as the taste grid has always shown. */
     $('teaser').innerHTML=revealVerdict
       ? d.teaser.slice(0,3).map(c=>`<div class="sw" style="background:${c}"></div>`).join('')
-      : d.teaser.slice(0,3).map(()=>`<div class="sw ph"></div>`).join('');
+      : '<div class="sw ph"></div>'.repeat(3);
   }
   if(isUnlocked)applyUnlocked(); else applyLocked();
   store.save();
@@ -2787,28 +2811,48 @@ function swatchGrid(list){return list.map(s=>`<div class="nsw"><div class="c" st
 function chipRow(list){return `<div class="chiprow">`+list.map(s=>`<span class="mchip"><i style="background:${s.hex}"></i>${s.name}</span>`).join('')+`</div>`;}
 function panGrid(list,round){return `<div class="pans${round?' round':''}">`+list.map(s=>`<div class="pan-cell"><div class="pan" style="background:${s.hex}"></div><b>${s.name}</b></div>`).join('')+`</div>`;}
 function compact(no,title,sub,inner){return `<div class="report-card compact"><div class="cpt-head"><div><div class="cpt-eyebrow">The Compact &middot; No. ${no}</div><h4 class="serif">${title}</h4><div class="rc-sub">${sub}</div></div><span class="cpt-stamp">HUE</span></div>${inner}</div>`;}
+/* Colorless, nameless pans. panGrid() paints each pan its real hex and prints
+   its real shade name; the locked tray called it and then covered the result
+   with a CSS frost, so every locked visitor was served her four lip shades and
+   two blushes — names and hex codes — in the DOM, needing only devtools or a
+   disabled stylesheet to read. That is the paid makeup edit. Now the locked
+   tray is built from counts alone and there is nothing underneath the frost. */
+function panGridBlank(n,round){return `<div class="pans${round?' round':''}">`+Array.from({length:n},()=>'<div class="pan-cell"><div class="pan ph"></div><b>&nbsp;</b></div>').join('')+`</div>`;}
 function applyLocked(){
-  $('lockwrap').style.display='';$('fullNamed').style.display='none';
-  const det=SEASON_DETAILS&&SEASON_DETAILS[currentSeason];
-  /* placeholder tiles only — the report's shades stay unseen until it's yours */
-  const shadeCount=det&&det.palette?det.palette.length:30;
-  $('full').innerHTML=Array.from({length:Math.min(18,shadeCount)},()=>'<div class="sw ph"></div>').join('');
-  $('report').innerHTML=`${det?`
+  /* EMPTY IT, DO NOT MERELY HIDE IT. applyUnlocked() fills #fullNamed with the
+     paid palette — 33 shade names and their hex codes — and this used to only
+     set display:none, leaving every one of them sitting in the DOM. So a
+     forged unlock that the worker then rejected (boot paints unlocked ->
+     /verify says no -> revokeUnlock) left the entire paid palette behind a
+     style attribute, one devtools toggle away. Hiding is not revoking. */
+  $('lockwrap').style.display='';
+  $('fullNamed').style.display='none';$('fullNamed').innerHTML='';
+  /* SEASON-BLIND BY CONSTRUCTION. currentSeason is null for every locked
+     visitor now, so nothing here may be indexed by season. The counts below
+     are constants rather than lookups — verified identical across all twelve
+     seasons (4 lips, 2 blushes, 6 to retire), which is why the surrounding
+     copy could always name them. The palette count is the one that genuinely
+     varies (32/33/34), and it is exactly the kind of tell that narrows twelve
+     answers to a few, so the locked label says "30+" and the tile count is
+     fixed. */
+  const LIPS=4, BLUSH=2, AVOID=6;
+  $('full').innerHTML='<div class="sw ph"></div>'.repeat(18);
+  $('report').innerHTML=`
   <div class="report-card">
     <h4 class="serif">Colors to retire</h4>
     <div class="rc-sub">Six shades are quietly draining you — your report names each one, and why.</div>
-    <div class="avoid-teaser">${det.avoid.map(()=>'<div class="c"></div>').join('')}<span>six colors, revealed in your report</span></div>
+    <div class="avoid-teaser">${'<div class="c"></div>'.repeat(AVOID)}<span>six colors, revealed in your report</span></div>
   </div>
   <div class="report-card compact compact-lock" role="button" tabindex="0" aria-label="Unlock the makeup edit — ${PRICE_LABEL}" onclick="checkout()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();checkout();}">
     <div class="cpt-head"><div><div class="cpt-eyebrow">The Compact &middot; No. 2</div><h4 class="serif">The makeup edit</h4><div class="rc-sub">Already pressed and waiting in your report.</div></div><span class="cpt-stamp">HUE</span></div>
     <div class="pantray frost">
       <div class="tray-label">Lips <em>&middot; four shades</em></div>
-      ${panGrid(det.makeup.lips,true)}
+      ${panGridBlank(LIPS,true)}
       <div class="tray-label" style="margin-top:14px">Blush</div>
-      ${panGrid(det.makeup.blush,true)}
+      ${panGridBlank(BLUSH,true)}
       <div class="frost-veil"><b>Sealed until it&rsquo;s yours</b><span>Your four lip shades, two blushes, eye colors and the exact foundation ask — named, matched to your season, yours forever.</span><em>Unlock — ${PRICE_LABEL}</em></div>
     </div>
-  </div>`:''}
+  </div>
   <div class="report-card">
     <h4 class="serif">Inside your report</h4>
     <div class="rc-sub">Everything unlocks the moment you're back from checkout.</div>
@@ -2819,7 +2863,7 @@ function applyLocked(){
      told her season. Locked, the button shares HUE (see shareResult). */
   $('shareBlock').style.display='none';$('shareLink').style.display='';
   $('shareLink').textContent='Share HUE with a friend';
-  $('fullLabel').textContent='Your full palette · '+(det&&det.palette?det.palette.length+' shades':'30+ shades');
+  $('fullLabel').textContent='Your full palette · '+SHADES_GENERIC+'+ shades';
 }
 /* Resolve the colors NAMED inside a combo string ("Cream ivory silk blouse +
    honey camel trousers + tomato-red lip") to real swatches. Every color word in
@@ -3260,19 +3304,45 @@ function checkout(){
      ORDER MATTERS: resolve the season BEFORE store.save(). save() serialises
      currentSeason, so saving first would overwrite the stored season with the
      very null we are here to replace, and the recovery below could never fire. */
-  let season=currentSeason;
-  if(!season||!SEASONS[season]){
+  /* WHAT SURVIVES THE ROUND TRIP IS NOW THE MEASUREMENT, NOT THE NAME.
+     Since mapSeason moved into the worker this page cannot name the season, so
+     it sends what it CAN legitimately know — the three measured axes — and the
+     worker names it on the other side (seasonFromRef -> axesFromRef ->
+     mapSeason). The guarantee above is unchanged and is what still matters:
+     never send someone to a checkout whose product we cannot identify. It is
+     now enforced on the axes rather than on a season string.
+
+     This also closes an integrity hole that predates the move: the ref used to
+     carry a season NAME the browser chose, so anything on the client could
+     have named a different product than the one measured. Axes are the
+     measurement itself.
+
+     A buyer who reloads has no axes in module state, so recover them from the
+     last save before giving up — same reasoning as the season recovery this
+     replaces, and the reason store.save() now persists them.
+     ORDER MATTERS: resolve axes BEFORE store.save(), or save() would overwrite
+     the stored axes with the very null we are here to replace. */
+  let axes=lastAxes;
+  if(!axes){
     const saved=store.load();
-    if(saved&&saved.season&&SEASONS[saved.season])season=currentSeason=saved.season;
+    if(saved&&saved.axes&&typeof saved.axes.depth==='number')axes=lastAxes=saved.axes;
   }
-  if(!season||!SEASONS[season]){
-    track('checkout_blocked',{reason:'no-season'});
+  /* An already-unlocked buyer re-purchasing is not a case worth guarding, but a
+     LEGACY device is: someone who took the quiz on the old build has a stored
+     season and no axes. Sending her back through the quiz would be a worse
+     answer than letting the worker read her stored season the old way, which
+     seasonFromRef still understands. */
+  const legacySeason=(!axes)?(()=>{const s=store.load();return s&&s.season&&SEASONS[s.season]?s.season:null;})():null;
+  if(!axes&&!legacySeason){
+    track('checkout_blocked',{reason:'no-axes'});
     toast('Let’s find your season first — it takes about two minutes.');
     startQuiz();
     return;
   }
   store.save();
-  track('checkout_clicked',{season:season,px:PRICE_CENTS});
+  /* the season is deliberately absent from our own analytics too — this page
+     does not know it, and that is the point */
+  track('checkout_clicked',{px:PRICE_CENTS,legacy:!!legacySeason});
   /* NO SEASON IN THE PIXEL PAYLOAD. privacy.html says, in as many words: "The
      pixel never receives your selfie, the tones measured from it, your
      individual answers, or your season. We deliberately withhold the season: it
@@ -3309,7 +3379,20 @@ function checkout(){
   try { if (localStorage.getItem('hue_ads_optout') === '1') noAds = true; } catch(e){ }
   if (navigator.globalPrivacyControl === true) noAds = true;
   const mark = noAds ? '_noads' : '';
-  const ref=((channel||'direct')+'_'+season.toLowerCase().replace(/ /g,'-')+'_px'+PRICE_CENTS).slice(0,180-mark.length)+mark;
+  /* a<warm><depth6><chroma6> — the measurement, fixed width, digits and one
+     lowercase letter only. Stripe SILENTLY DROPS a client_reference_id with
+     invalid characters and the worker lowercases before parsing, so the
+     alphabet here is deliberately the smallest one that survives both. Fixed
+     width is what lets axesFromRef anchor on _ boundaries and never mistake a
+     channel name for a measurement. Clamped 0..999999 so a NaN or an
+     out-of-range axis can never mint a ref that parses to something else.
+     Six decimals rather than four: see the quantisation note on axesFromRef in
+     worker/report-mailer.js — four left a 0.07% band of measurements whose
+     season could flip on rounding alone. */
+  const q=v=>String(Math.max(0,Math.min(999999,Math.round((+v||0)*1000000)))).padStart(6,'0');
+  const product=axes?('a'+(axes.warm?'1':'0')+q(axes.depth)+q(axes.chroma))
+                    :legacySeason.toLowerCase().replace(/ /g,'-');
+  const ref=((channel||'direct')+'_'+product+'_px'+PRICE_CENTS).slice(0,180-mark.length)+mark;
   location.href=PAYMENT_LINK+'?client_reference_id='+encodeURIComponent(ref);
 }
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),3400);}
@@ -3538,6 +3621,11 @@ buildDecks();
      affected by the cutover. */
   if(saved&&saved.unlocked&&saved.ut){isUnlocked=true;unlockProof=saved.ut;}
   if(saved&&saved.read&&saved.read.skinHex)lastPhotoRead=saved.read;
+  /* Restore the measurement so a returning LOCKED visitor can still buy. Her
+     result screen is season-blind and always was on this build, so without the
+     axes back in module state checkout() would have had nothing to send and
+     would have pushed a ready-to-pay visitor back through the quiz. */
+  if(saved&&saved.axes&&typeof saved.axes.depth==='number')lastAxes=saved.axes;
   if(isUnlocked){
     if(saved&&saved.season&&SEASONS[saved.season]){
       render(saved.season,false);   /* repaint of a result already seen — no reveal analytics */
@@ -3598,12 +3686,25 @@ buildDecks();
       fbq('track','Purchase',{value:PRICE_CENTS/100,currency:'USD'},{eventID:sid}); }catch(e){}
   }
 
+  /* THIS IS WHERE THE ANSWER ENTERS THE BROWSER — the only place it can, now
+     that mapSeason lives in the worker. `season` here came back from /verify or
+     /session, which read it out of an HMAC-signed token minted against a paid
+     Stripe session. Everything before this point in her visit is season-blind
+     by construction, so there is nothing to "hide" and nothing to leak. */
   function grantUnlock(token,season,sid){
     isUnlocked=true;unlockProof=token;
     const prev=store.load()||{};
     const s=season&&SEASONS[season]?season:(prev.season||null);
-    try{localStorage.setItem('hue',JSON.stringify({season:s,unlocked:true,ut:token,via:channel,read:prev.read||null}))}catch(e){}
+    try{localStorage.setItem('hue',JSON.stringify({season:s,unlocked:true,ut:token,via:channel,read:prev.read||null,axes:(lastAxes||prev.axes||undefined)}))}catch(e){}
     reportPurchase(sid);
+    /* The insight is written ABOUT the season, so it could not be composed at
+       reveal time any more — run() now leaves it null. Compose it here, the
+       moment the season is known, from the read taken on her device. Without
+       this a buyer's report simply had no insight line. */
+    if(s&&SEASONS[s]&&!lastInsight){
+      const read=lastPhotoRead||prev.read||null;
+      if(read&&read.skinHex){try{lastInsight=makeInsight(read,s);}catch(e){lastInsight=null;}}
+    }
     if(s&&SEASONS[s]){render(s,false);toast('Your '+s+' report is unlocked below.');}
     else{applyUnlocked&&applyUnlocked();toast('Unlocked — take the two-minute quiz to reveal your full report.');}
   }
@@ -3642,8 +3743,21 @@ buildDecks();
     show('purchased');
   }
 
+  /* Re-present the measurement alongside the token. If Stripe dropped the ref
+     the token carries season:null, and this page can no longer fall back on
+     knowing the season itself — so without this a real buyer would be shown
+     "take the quiz" instead of the report she paid for. The worker still
+     requires the signed token for the entitlement; the axes only say which
+     report. Empty string when there is no measurement, which the worker
+     ignores. See the SEASON RECOVERY note in report-mailer.js. */
+  function axesParam(){
+    const a=lastAxes||((store.load()||{}).axes);
+    if(!a||typeof a.depth!=='number')return '';
+    const q=v=>String(Math.max(0,Math.min(999999,Math.round((+v||0)*1000000)))).padStart(6,'0');
+    return '&a='+encodeURIComponent('a'+(a.warm?'1':'0')+q(a.depth)+q(a.chroma));
+  }
   if(unlockToken){
-    fetch(WORKER+'/verify?t='+encodeURIComponent(unlockToken))
+    fetch(WORKER+'/verify?t='+encodeURIComponent(unlockToken)+axesParam())
       .then(r=>r.ok?r.json():null)
       .then(j=>{ if(j&&j.ok)grantUnlock(unlockToken,j.season,j.sid);
                  else toast('That report link is not valid. Reply to your receipt and we will resend it.'); })
@@ -3652,7 +3766,7 @@ buildDecks();
     /* Paint the confirmation immediately — the lookup below may take a moment,
        and a blank paywall in the meantime is the worst thing to show a buyer. */
     showPurchased();
-    fetch(WORKER+'/session?sid='+encodeURIComponent(sessionId))
+    fetch(WORKER+'/session?sid='+encodeURIComponent(sessionId)+axesParam())
       .then(r=>r.json().then(j=>({status:r.status,j})))
       .then(({status,j})=>{
         /* Verified paid: skip the inbox detour entirely and just open it.
@@ -3719,8 +3833,10 @@ buildDecks();
      from revealVerdict and calls applyLocked() itself on the way out. */
   function revokeUnlock(){
     isUnlocked=false;unlockProof=null;
+    currentSeason=null;   /* the browser is not entitled to know it any more */
+    lastInsight=null;     /* it is written about the season, so it goes too */
     store.save();
-    if(currentSeason&&SEASONS[currentSeason])render(currentSeason,false);
+    render(null,false);
   }
 })();
 </script>
