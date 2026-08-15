@@ -2014,66 +2014,6 @@ function analyzePhoto(img){
      pixels that survive its own filter and falls back gracefully. */
   const med=a=>{a.sort((p,q)=>p-q);return a[a.length>>1];};
   const lumOf=(r,g,b)=>(.299*r+.587*g+.114*b)/255;
-  /* --iris-mode-start-- (worker/test-iris-mode.js extracts this exact block) */
-  /* ONLY THE IRIS, NOT WHAT SURROUNDS IT. Slicing the kept pixels by percentile
-     assumes ONE population. The eye box holds two: a fairly uniform iris disc,
-     and a much darker clump of lash, liner and lid crease that eyeKeep() cannot
-     exclude. A fixed 25-85% band straddles both, so the median is dragged dark
-     and toward neutral — noise in the answer even when the sample is good
-     enough to trust. Refusing bad samples (irisTrust) does not fix this; it only
-     declines the worst of them.
-     So the COLOUR is taken from the DOMINANT MODE instead of a percentile band:
-     histogram the kept pixels by luminance, find the tallest bin, and grow
-     outward only while neighbours stay above a third of that peak. A separate
-     darker cluster lies past the valley and is excluded structurally, however
-     many pixels it holds — which is the part a percentile band could never do.
-     If the lashes ARE the largest mode (heavy mascara, or the box slid off the
-     eye entirely) the window lands on them and the L* floor in irisTrust()
-     refuses the read. The two mechanisms cover each other. */
-  function irisMode(set,bins){
-    if(!set||!set.length)return null;
-    const B=bins||24;
-    let lo=1,hi=0;
-    for(const p of set){if(p[3]<lo)lo=p[3];if(p[3]>hi)hi=p[3];}
-    const span=hi-lo;
-    if(!(span>0))return {pixels:set.slice(),split:false};
-    const h=new Array(B).fill(0);
-    for(const p of set)h[Math.min(B-1,Math.floor((p[3]-lo)/span*B))]++;
-    /* Otsu: the threshold that best separates the histogram into two classes.
-       eta is how much of the total variance that split explains — near 1 when the
-       data really is two clumps, low when it is one. Picking the TALLEST bin
-       instead would be wrong and was: a tight dark lash cluster out-peaks a
-       broader iris even with half the pixels, so the window landed on the lashes.
-       Count, not peak height, and only cut when there is something to cut. */
-    const N=set.length;
-    let sum=0;for(let i=0;i<B;i++)sum+=i*h[i];
-    let sumB=0,wB=0,best=-1,tIdx=0;
-    for(let i=0;i<B;i++){
-      wB+=h[i];if(!wB)continue;
-      const wF=N-wB;if(!wF)break;
-      sumB+=i*h[i];
-      const mB=sumB/wB,mF=(sum-sumB)/wF,v=wB*wF*(mB-mF)*(mB-mF);
-      if(v>best){best=v;tIdx=i;}
-    }
-    let mu=sum/N,varT=0;
-    for(let i=0;i<B;i++)varT+=h[i]*(i-mu)*(i-mu);
-    const eta=varT>0?(best/(N*N))/(varT/N):0;
-    /* One population (a clean iris) must be left alone — cutting it in half would
-       bias the colour bright, which an earlier .55 guard did: it cost the clean
-       case 8 units of error to save the contaminated ones. Measured over
-       synthetic populations, eta separates cleanly and with room to spare:
-       a single iris blob runs .67-.71 across jitter widths 8-26, while
-       iris+lashes runs .98-.99 across lash fractions 24-50%. .85 sits midway,
-       so neither side is close to the line. */
-    if(eta<.85)return {pixels:set.slice(),split:false};
-    /* Of the two classes, the iris is the BRIGHTER one. Lash, liner and crease are
-       darker than any iris, and sclera was already dropped by eyeKeep, so "keep
-       the bright class" is physically grounded rather than a heuristic. */
-    const cut=lo+span*((tIdx+1)/B);
-    const keep=set.filter(p=>p[3]>cut);
-    return keep.length>=12?{pixels:keep,split:true,cut:cut}:{pixels:set.slice(),split:false};
-  }
-  /* --iris-mode-end-- */
   /* --iris-gate-start-- (worker/test-iris-gate.js extracts this exact block;
      keep the markers or the test fails loudly rather than testing nothing) */
   /* EYE_MAX_SPREAD — the kept luminance band, 25th to 85th percentile. A real
@@ -2158,14 +2098,7 @@ function analyzePhoto(img){
          band is narrow; a lash-contaminated sample is a MIXTURE of two
          populations and spans much wider. irisTrust() reads this. */
       eyeSpread=mid[mid.length-1][3]-mid[0][3];
-      /* Two different jobs, deliberately split. SPREAD is measured on the full
-         kept band and answers "was this sample contaminated?" — it is the trust
-         signal irisTrust() reads. The COLOUR comes from the dominant mode, so a
-         sample that is contaminated but still under the trust threshold yields
-         an iris colour rather than an iris-lash average. */
-      const mode=irisMode(eyeSet);
-      const px=(mode&&mode.pixels.length>=20)?mode.pixels:mid;
-      eyeRGB=medOf(px);
+      eyeRGB=medOf(mid);
     }
   }
   /* LIPS — pixels in the mouth box redder than the skin baseline */
