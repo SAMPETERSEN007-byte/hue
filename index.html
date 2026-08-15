@@ -2014,6 +2014,22 @@ function analyzePhoto(img){
      pixels that survive its own filter and falls back gracefully. */
   const med=a=>{a.sort((p,q)=>p-q);return a[a.length>>1];};
   const lumOf=(r,g,b)=>(.299*r+.587*g+.114*b)/255;
+  /* --iris-gate-start-- (worker/test-iris-gate.js extracts this exact block;
+     keep the markers or the test fails loudly rather than testing nothing) */
+  /* EYE_MAX_SPREAD — the kept luminance band, 25th to 85th percentile. A real
+     iris is a fairly uniform disc and lands well under .20; a box that caught
+     eyelashes as well as iris holds two populations and spans wider.
+     EYE_MIN_L — no iris is this dark in L*. Deep brown bottoms out around 22-25
+     even in poor light; mascara, liner and lash clumps sit below 15. Anything
+     under the floor is not a dark iris, it is not an iris. */
+  const EYE_MAX_SPREAD=.20, EYE_MIN_L=18;
+  function irisTrust(spread,eL){
+    if(spread==null)return {ok:false,why:'too-few-iris-pixels'};
+    if(spread>EYE_MAX_SPREAD)return {ok:false,why:'lashes-mixed-in'};
+    if(eL<EYE_MIN_L)return {ok:false,why:'too-dark-for-an-iris'};
+    return {ok:true};
+  }
+  /* --iris-gate-end-- */
   const hex=(r,g,b)=>'#'+[r,g,b].map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');
   /* feature sampling runs on the 400px detection buffer when a face was
      found (fine enough to read an iris on a half-body shot); geometry and
@@ -2068,11 +2084,22 @@ function analyzePhoto(img){
   };
   let eyeSet=collect(fx-.175*fs,fy-.075*fs,.10*fs,.07*fs,eyeKeep)
       .concat(collect(fx+.175*fs,fy-.075*fs,.10*fs,.07*fs,eyeKeep));
-  let eyeRGB=null;
+  let eyeRGB=null,eyeSpread=null;
   if(eyeSet.length>=30){
     eyeSet.sort((a,b)=>a[3]-b[3]);
     const mid=eyeSet.slice(Math.round(eyeSet.length*.25),Math.round(eyeSet.length*.85));
-    if(mid.length>=20)eyeRGB=medOf(mid);
+    if(mid.length>=20){
+      /* HOW WIDE THE KEPT BAND IS, which is what tells an iris from eyelashes.
+         The eye box is a fixed geometric guess off the face box (fx ± .175·fs),
+         not an eye landmark, so a head tilt slides it off the iris. And eyeKeep
+         only excludes skin, black and blown-out pixels — lashes, liner, mascara
+         and the lid crease all survive it, and in that box they outnumber iris
+         pixels on most faces. A real iris is a fairly uniform disc, so its kept
+         band is narrow; a lash-contaminated sample is a MIXTURE of two
+         populations and spans much wider. irisTrust() reads this. */
+      eyeSpread=mid[mid.length-1][3]-mid[0][3];
+      eyeRGB=medOf(mid);
+    }
   }
   /* LIPS — pixels in the mouth box redder than the skin baseline */
   const skinRG=R-Gc;
@@ -2192,6 +2219,20 @@ function analyzePhoto(img){
   let eyeName=null,eyeC=0,eyeHue=0,lEye=null;
   if(eyeRGB){
     const [eL,ea,eb]=rgb2lab(eyeRGB[0],eyeRGB[1],eyeRGB[2]);
+    /* REFUSE THE READ RATHER THAN GUESS BROWN. Without this, an untrustworthy
+       sample still lands somewhere: the eyeC<9 && eL<38 branch below answers
+       "deep brown" for anything dark and near-neutral, which is exactly what a
+       clump of eyelashes is. That is why the iris "keeps coming up wrong" — it
+       was never a threshold being slightly off, it was a wrong answer being
+       reported with the same confidence as a right one.
+       A rejected read drops out everywhere downstream on its own: the iris step
+       leaves the analyzing narration, the Eyes swatch leaves the measured panel,
+       the warmAux eye terms stop voting, and measuredNote already says "we could
+       not see your eyes" — honest, and it costs the undertone one weak signal
+       rather than feeding it a false one. */
+    const trust=irisTrust(eyeSpread,eL);
+    if(!trust.ok){eyeRGB=null;}
+    else{
     eyeC=Math.hypot(ea,eb);
     eyeHue=((Math.atan2(eb,ea)*180/Math.PI)+360)%360;
     lEye=eL/100;
@@ -2199,6 +2240,7 @@ function analyzePhoto(img){
       :eyeHue<95?(eL<32?'deep brown':eL<48?(eyeC>28?'amber brown':'brown'):(eyeC>20?'hazel':'light brown'))
       :eyeHue<165?'green'
       :eyeHue<205?'gray-blue':'blue';
+    }
   }
   /* lip undertone: a strong chroma reading means lipstick — discard it */
   let lipHue=null;
