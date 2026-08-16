@@ -2561,7 +2561,25 @@ function decideSeason(photo){
        Centre 0.22 and scale 0.32 sit mid-plateau of a 4-parameter sweep. */
     let vote = photo.relWarm!=null ? Math.max(-3,Math.min(3,(photo.relWarm-0.22)/0.32))
              : (w>55?3 : w>18?1.5 : w<-20?-3 : w<-6?-1.5 : 0);
-    if(photo.hue!=null)vote += photo.hue>63?2 : photo.hue>58?1 : photo.hue<44?-2 : photo.hue<48?-1 : 0;
+    /* THE NEUTRAL BAND MUST BE WIDER THAN THE MEASUREMENT'S OWN NOISE.
+       The hue rungs at 48 and 58 sat about 5 degrees from the corpus median
+       skin hue of 53.9 — and skin hue moves that much on its own when nothing
+       about the person changes. Measured over 280 (clean photo, same photo
+       under a condition) pairs, |change in hue| has a median of 1.6 degrees
+       and a p90 of 5.8, so those two rungs sat INSIDE the noise: a hand in
+       frame, a beauty filter or mixed lighting was routinely enough to cross
+       one. The rungs are +-1 while the whole vote usually lands between 0.3
+       and 0.9, so crossing one did not lean the read, it reversed it. Of the
+       15 photo pairs whose warm/cool family flipped under a condition, this
+       term alone caused 14; the ratio term caused 1.
+       Widening the band to 44..62 puts its edges ~9 degrees out, clear of the
+       p90, and leaves only the +-2 votes at genuinely extreme hue. Measured:
+       15 family flips -> 3, with the warm/cool split over the 20 real photos
+       unchanged at 18/2. A flatter response is NOT the fix and was tried: a
+       continuous ramp through these same anchors scored 26 flips, because the
+       dead band is doing the work — it declines to vote when the evidence is
+       within noise, and a ramp votes on every photo. */
+    if(photo.hue!=null)vote += photo.hue>63?2 : photo.hue>62?1 : photo.hue<44?-2 : 0;
     /* eyes, hair and lips lean the read a little (engine v4) — capped at ±1
        so the skin itself always outvotes them */
     if(photo.warmAux)vote+=photo.warmAux;
