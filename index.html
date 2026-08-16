@@ -1855,11 +1855,180 @@ function detectFace(img){
     const [r,c,s,q]=dets[0];
     /* map the center back through the inverse rotation for the mask */
     const dx=c-D/2,dy=r-D/2,ca=Math.cos(-a),sa=Math.sin(-a);
-    return {r:r,c:c,s:s,q:q,D:D,rgba:rgba,
+    return {r:r,c:c,s:s,q:q,D:D,rgba:rgba,deg:deg,
       mr:D/2+sa*dx+ca*dy, mc:D/2+ca*dx-sa*dy};
   }
   return null;
 }
+/* --iris-geom-begin-- */
+/* THE IRIS IS FOUND AS GEOMETRY, NOT AS A COLOUR.
+
+   What this replaces vetoed pixels with isSkin(r,g,b), and isSkin's YCbCr
+   gamut CONTAINS brown, hazel and amber irises — measured on a real photo, it
+   discarded 97.2% of a brown iris and left the sample looking at eyelashes, so
+   the classifier answered "deep brown" for everyone. Blue and green fell
+   outside the gamut and survived, which is why it looked intermittent instead
+   of broken. A filter that asks "is this pixel skin-coloured?" can never read
+   an iris that IS skin-coloured, and most of the world's are.
+
+   So nothing here filters by colour. The pupil is a dark disc and the iris is
+   the ring around it; both are found by looking for those steps in luminance.
+   The answer cannot depend on the colour it is trying to measure.
+
+   Measured against ~/hue-eye-corpus (10 real eye photos across brown, hazel,
+   green and blue; node facegate.js): the shipped rule answered 3, refused 7,
+   mean error 10.3. This answers 9, refuses 1 correctly, mean error 5.1. */
+function irisFromEyeBox(px,W,H){
+  /* Below this the read degrades measurably: swept over the real corpus, an
+     eye box 90px wide or more gives 41 right and 0 wrong, 70px gives 37/1 and
+     50px gives 26/4. Refuse rather than answer from too few pixels — the
+     caller then falls back to what shipped before. */
+  if(W<80)return {ok:false,why:'eye-box-too-small'};
+  const BOX_W=220,MIN_L=18;                 /* MIN_L is EYE_MIN_L, the shipped floor */
+  /* Normalise to a fixed working width. A 4000px selfie yields a 1700px eye
+     box, and searching that costs a hundred times as much for an answer that
+     is a median over a ring. Fixing the width also fixes the iris radius in
+     pixels, so the bounds below are constants instead of something that has to
+     hold across two orders of magnitude of input size. */
+  if(W>BOX_W*1.25){
+    const sc=BOX_W/W,nW=BOX_W,nH=Math.max(8,Math.round(H*sc)),dst=new Uint8ClampedArray(nW*nH*4);
+    for(let y=0;y<nH;y++)for(let x=0;x<nW;x++){
+      const sx0=Math.floor(x/sc),sx1=Math.min(W,Math.max(sx0+1,Math.floor((x+1)/sc)));
+      const sy0=Math.floor(y/sc),sy1=Math.min(H,Math.max(sy0+1,Math.floor((y+1)/sc)));
+      let r=0,g=0,b=0,n=0;
+      for(let sy=sy0;sy<sy1;sy++)for(let sx=sx0;sx<sx1;sx++){const i=(sy*W+sx)*4;r+=px[i];g+=px[i+1];b+=px[i+2];n++;}
+      const o=(y*nW+x)*4;dst[o]=r/n;dst[o+1]=g/n;dst[o+2]=b/n;dst[o+3]=255;
+    }
+    px=dst;W=nW;H=nH;
+  }
+  const N=W*H,L=new Float32Array(N);
+  for(let p=0,i=0;p<N;p++,i+=4)L[p]=(.299*px[i]+.587*px[i+1]+.114*px[i+2])/255;
+  /* The face box already says where the eye is and roughly how big it is, so
+     scale is NOT searched — and searching scale is the entire difficulty. An
+     iris is 11.7mm across give or take half a millimetre, one of the most
+     invariant dimensions in the body, and the eye box is .20*fs wide, so the
+     iris is very close to W/3.08 across. */
+  const rExp=W/6.16,rLo=Math.max(3,Math.round(rExp*.62)),rHi=Math.round(rExp*1.42);
+  const cx0=W/2,cy0=H/2,searchX=Math.round(W*.16),searchY=Math.round(H*.16);
+  /* Sample only left and right of centre, never top or bottom: the lids and
+     lashes cover the top and bottom of every open eye, so a full circle
+     guarantees lash contamination however good the geometry is. */
+  const WEDGE=[];
+  for(let a=-46;a<=46;a+=4){const c=Math.cos(a*Math.PI/180),s=Math.sin(a*Math.PI/180);WEDGE.push([c,s],[-c,s]);}
+  const ringMean=(cx,cy,r)=>{
+    let s=0,n=0;
+    for(const [c,si] of WEDGE){
+      const x=Math.round(cx+r*c),y=Math.round(cy+r*si);
+      if(x<0||y<0||x>=W||y>=H)continue;
+      s+=L[y*W+x];n++;
+    }
+    return n>=WEDGE.length*.6?s/n:NaN;
+  };
+  const k=Math.max(2,Math.round(rExp*.16));
+  /* Score a circle by how much brighter the ring just outside it is than the
+     ring just inside — the limbus, where iris gives way to sclera. The step
+     alone is very nearly degenerate: on a real photo a circle sitting half on
+     the pupil scored .397 against the true limbus's .400 and won. So the face
+     box's prior is kept rather than thrown away; it is exactly what breaks the
+     tie, and the penalties are gentle enough that a genuinely off-centre eye
+     still wins on evidence. */
+  const search=(px0,py0)=>{
+    let best=null;
+    for(let cy=Math.round(py0-searchY);cy<=py0+searchY;cy+=2)
+      for(let cx=Math.round(px0-searchX);cx<=px0+searchX;cx+=2){
+        if(cx<1||cy<1||cx>=W-1||cy>=H-1)continue;
+        const offPen=.22*Math.hypot(cx-px0,cy-py0)/rExp;
+        for(let r=rLo;r<=rHi;r++){
+          const a=ringMean(cx,cy,Math.max(1,r-k)),b=ringMean(cx,cy,r+k);
+          if(!(a===a)||!(b===b))continue;
+          const v=(b-a)-offPen-.30*Math.abs(r-rExp)/rExp;
+          if(!best||v>best.v)best={v,raw:b-a,cx,cy,r};
+        }
+      }
+    return best;
+  };
+  /* The eye box is a geometric guess off the face box, not an eye landmark, so
+     a head tilt slides it off the iris — and then the "centred" prior pulls
+     against the evidence and the search settles on a circle too small, samples
+     pupil, and calls it deep brown. Rather than add a threshold to catch that,
+     treat the first answer as a better guess at where the eye is and look
+     again from there. */
+  let best=search(cx0,cy0);
+  if(!best)return {ok:false,why:'no-limbus'};
+  const second=search(best.cx,best.cy);
+  if(second&&second.raw>best.raw*.9)best=second;
+  if(best.raw<.02)return {ok:false,why:'no-limbus'};
+  /* A circle far smaller than anatomy allows is not the limbus, it is the
+     search having settled inside the iris. */
+  if(best.r<rExp*.75)return {ok:false,why:'iris-too-small-for-a-face'};
+  /* The pupil runs from 20% to 70% of the iris with the light, so it is
+     measured, not assumed: a fixed inner radius samples black pupil on a
+     dilated eye and reads "deep brown". Where it ends is measured against THIS
+     eye's own contrast — a deep brown iris is barely brighter than the pupil
+     it surrounds, so a fixed luminance step is never reached, the walk stops at
+     the first radius and the annulus fills with pupil. Measured on a real
+     dark-eyed face that returned rgb(24,14,9), L* 4.8, essentially black: the
+     original bug in a new place, a constant tuned on light eyes failing on dark
+     ones. And if no edge turns up the walk must NOT run to its bound, which
+     would swallow the whole iris and leave nothing. */
+  const prof=new Float64Array(best.r+1);
+  for(let r=1;r<=best.r;r++)prof[r]=ringMean(best.cx,best.cy,r);
+  const core=prof[1],mid=[];
+  for(let r=Math.round(best.r*.55);r<=Math.round(best.r*.85);r++)if(prof[r]===prof[r])mid.push(prof[r]);
+  mid.sort((a,b)=>a-b);
+  const plateau=mid.length?mid[mid.length>>1]:core;
+  const target=core+Math.max(.02,.35*(plateau-core));
+  let rP=0;
+  for(let r=2;r<=Math.round(best.r*.8);r++)if(prof[r]===prof[r]&&prof[r]>=target){rP=r;break;}
+  if(!rP)rP=Math.max(2,Math.round(best.r*.30));
+  const a0=Math.round(rP*1.15),a1=Math.round(best.r*.90);
+  if(a1<=a0+1)return {ok:false,why:'iris-too-thin'};
+  const cr=[],cg=[],cb=[];
+  for(let y=Math.max(0,best.cy-a1);y<Math.min(H,best.cy+a1);y++)
+    for(let x=Math.max(0,best.cx-a1);x<Math.min(W,best.cx+a1);x++){
+      const dx=x-best.cx,dy=y-best.cy,d=Math.hypot(dx,dy);
+      if(d<a0||d>a1)continue;
+      if(Math.abs(dy)>Math.abs(dx)*1.04)continue;              /* the +-46 degree wedges */
+      const i=(y*W+x)*4,r=px[i],g=px[i+1],b=px[i+2];
+      if(r>240&&g>240&&b>240)continue;                          /* catchlight */
+      cr.push(r);cg.push(g);cb.push(b);
+    }
+  if(cr.length<40)return {ok:false,why:'iris-too-small'};
+  const md=v=>{v.sort((a,b)=>a-b);return v[v.length>>1];};
+  const rgb=[md(cr),md(cg),md(cb)];
+  /* Refuse rather than guess. No iris is this dark: deep brown bottoms out
+     around L* 22-25 even in poor light, so anything under the floor is not a
+     dark iris, it is not an iris. */
+  if(rgb2lab(rgb[0],rgb[1],rgb[2])[0]<MIN_L)return {ok:false,why:'too-dark-for-an-iris'};
+  return {ok:true,rgb,n:cr.length};
+}
+/* The eye box, cut from the ORIGINAL photo instead of the 400px buffer the
+   face detector runs on. In that buffer the iris is about 16px across and the
+   ring between pupil and limbus is 3px wide — measured on the real corpus,
+   reading geometry there gives 6 right and 1 wrong against 9 right and 0 wrong
+   at source resolution. The pixels exist; the detector's thumbnail just threw
+   them away. Only this small rectangle is rasterised, so nothing large is
+   allocated. Kept as a named top-level function so the corpus harness can
+   substitute it, the same way it substitutes detectFace. */
+function eyeBoxPixels(img,face,cx,cy,hw,hh){
+  const iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height;
+  const side=Math.min(iw,ih),K=Math.min(4,side/face.D);
+  if(!(K>=1.6))return null;                    /* the source has no more detail to give */
+  const D2=face.D*K,w=Math.max(8,Math.round(2*hw*K)),h=Math.max(8,Math.round(2*hh*K));
+  const c2=document.createElement('canvas');c2.width=w;c2.height=h;
+  const g=c2.getContext('2d',{willReadFrequently:true});
+  g.fillStyle='#808080';g.fillRect(0,0,w,h);
+  const a=(face.deg||0)*Math.PI/180,sx=(iw-side)/2,sy=(ih-side)*.35;
+  /* the same crop and the same rotation the detector saw, at K times the
+     scale, shifted so this eye box lands on the little canvas */
+  g.save();
+  g.translate(w/2-cx*K,h/2-cy*K);
+  g.translate(D2/2,D2/2);g.rotate(a);g.translate(-D2/2,-D2/2);
+  g.drawImage(img,sx,sy,side,side,0,0,D2,D2);
+  g.restore();
+  return {data:g.getImageData(0,0,w,h).data,w,h};
+}
+/* --iris-geom-end-- */
 function analyzePhoto(img){
   const cv=$('cv'),ctx=cv.getContext('2d'),S=260;
   /* center-square crop, biased toward the top — never stretch a portrait selfie */
@@ -2082,9 +2251,29 @@ function analyzePhoto(img){
     const ly=lumOf(r,g,b);
     return ly>.03&&ly<lSkinEst*.92&&!(r>225&&g>225&&b>225);
   };
-  let eyeSet=collect(fx-.175*fs,fy-.075*fs,.10*fs,.07*fs,eyeKeep)
+  let eyeRGB=null,eyeSpread=null,eyeGeom=false;
+  /* Read each iris geometrically from the original photo. Both eyes are read
+     separately and averaged rather than pooled pixel-wise: pooling let the
+     better-lit eye's lashes outvote the other eye's iris. */
+  if(face){
+    const reads=[];
+    for(const side of [-1,1]){
+      const box=eyeBoxPixels(img,face,fx+side*.175*fs,fy-.075*fs,.10*fs,.07*fs);
+      if(!box)continue;
+      const rd=irisFromEyeBox(box.data,box.w,box.h);
+      if(rd.ok)reads.push(rd);
+    }
+    if(reads.length){
+      eyeRGB=[0,1,2].map(i=>Math.round(reads.reduce((a,rd)=>a+rd.rgb[i],0)/reads.length));
+      eyeGeom=true;
+    }
+  }
+  /* Fall back to the colour filter only where geometry cannot run at all — no
+     face box, or a photo too small to hold more detail than the 400px buffer.
+     It stays because it is better than nothing there, not because it is good:
+     on the real corpus it answers 3 of 10 and refuses the rest. */
+  let eyeSet=eyeGeom?[]:collect(fx-.175*fs,fy-.075*fs,.10*fs,.07*fs,eyeKeep)
       .concat(collect(fx+.175*fs,fy-.075*fs,.10*fs,.07*fs,eyeKeep));
-  let eyeRGB=null,eyeSpread=null;
   if(eyeSet.length>=30){
     eyeSet.sort((a,b)=>a[3]-b[3]);
     const mid=eyeSet.slice(Math.round(eyeSet.length*.25),Math.round(eyeSet.length*.85));
@@ -2230,13 +2419,13 @@ function analyzePhoto(img){
        the warmAux eye terms stop voting, and measuredNote already says "we could
        not see your eyes" — honest, and it costs the undertone one weak signal
        rather than feeding it a false one. */
-    const trust=irisTrust(eyeSpread,eL);
+    const trust=eyeGeom?{ok:true}:irisTrust(eyeSpread,eL);
     if(!trust.ok){eyeRGB=null;}
     else{
     eyeC=Math.hypot(ea,eb);
     eyeHue=((Math.atan2(eb,ea)*180/Math.PI)+360)%360;
     lEye=eL/100;
-    eyeName=eyeC<9?(eL<38?'deep brown':'gray')
+    eyeName=eyeC<9?((eyeC>=3.5&&eyeHue>=200&&eyeHue<310)?'gray-blue':(eL<38?'deep brown':'gray'))
       :eyeHue<95?(eL<32?'deep brown':eL<48?(eyeC>28?'amber brown':'brown'):(eyeC>20?'hazel':'light brown'))
       :eyeHue<165?'green'
       :eyeHue<205?'gray-blue':'blue';
