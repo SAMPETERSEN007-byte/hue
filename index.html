@@ -322,6 +322,21 @@
   .card .inner h3{font-size:38px;font-weight:400;margin:6px 0 16px}
   .palette{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
   .palette .sw{aspect-ratio:.8;border-radius:2px;box-shadow:var(--shadow-sm);display:flex;align-items:flex-end;justify-content:center;padding-bottom:7px}
+  /* THE DRAPE — the whole point of colour analysis is seeing the difference on
+     YOUR face, not reading two hex codes. Both panels are the same crop of her
+     own photo; only the colour behind it changes, which is exactly what an
+     analyst does with fabric. Her photo never leaves the device: this is drawn
+     from the <img> already in the page. */
+  .drape{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 4px}
+  /* a class-level display beats the UA's [hidden]{display:none}, so the
+     quiz-only path rendered two broken panels instead of nothing */
+  .drape[hidden]{display:none}
+  .drape figure{margin:0}
+  .drape .dp{aspect-ratio:1;border-radius:2px;overflow:hidden;display:flex;align-items:flex-end;justify-content:center;box-shadow:var(--shadow-sm)}
+  .drape .dp img{width:88%;margin-bottom:-4%;
+    -webkit-mask-image:radial-gradient(ellipse 46% 52% at 50% 46%,#000 62%,rgba(0,0,0,.7) 80%,transparent 96%);
+    mask-image:radial-gradient(ellipse 46% 52% at 50% 46%,#000 62%,rgba(0,0,0,.7) 80%,transparent 96%)}
+  .drape figcaption{font:600 10px/1.4 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--soft);text-align:center;padding-top:7px}
   .palette .sw small{font-size:8.5px;font-weight:600;color:#fff;letter-spacing:.02em;text-shadow:0 1px 3px rgba(0,0,0,.35)}
   /* free "taste" palette — a few swatches, centered; the full grid stays locked */
   .palette.taste{grid-template-columns:repeat(3,1fr);max-width:288px;margin:0 auto}
@@ -1205,6 +1220,10 @@ and with no disclosure shown. --></noscript>
              season is named anywhere in this section, comments included. -->
         <h3 class="serif" id="cardSeason">Your season</h3>
         <div class="palette taste" id="teaser"></div>
+        <div class="drape" id="drape" hidden>
+          <figure><div class="dp" id="dpA"><img id="dpImgA" alt="You against a colour that lifts you"></div><figcaption>Your colour</figcaption></figure>
+          <figure><div class="dp" id="dpB"><img id="dpImgB" alt="You against a colour that drains you"></div><figcaption>Drains you</figcaption></figure>
+        </div>
 
         <div class="section-label" id="fullLabel">Your full palette · 30+ shades</div>
         <div class="lockwrap" id="lockwrap" role="button" tabindex="0" aria-label="Unlock your full report — $5.99" onclick="checkout()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();checkout();}">
@@ -3144,6 +3163,8 @@ function render(season,fresh){
         ? `<div class="sw" style="background:${free.works}"><small>wear this</small></div>`
           +`<div class="sw" style="background:${free.retire}"><small>retire this</small></div>`
         : '<div class="sw ph"></div>'.repeat(3);
+    /* show her the difference rather than describing it */
+    renderDrape(free);
   }
   if(isUnlocked)applyUnlocked(); else applyLocked();
   store.save();
@@ -3170,6 +3191,40 @@ function hslHex(h,s,l){
   const f=n=>{const k=(n+h/30)%12,x=s*Math.min(l,1-l);
     return Math.round(255*(l-x*Math.max(-1,Math.min(k-3,9-k,1))));};
   return '#'+[f(0),f(8),f(4)].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+/* Her face for the drape. Nothing is uploaded: this reads the same <img> the
+   analysing screen already showed her, so the privacy promise ("analyzed on
+   your device and never uploaded") is untouched.
+
+   #previewImg is ALREADY the face-centred square crop centerPreviewOnFace()
+   built for the analysing ring, with the face at ~62% of frame. Re-deriving a
+   crop from the ORIGINAL photo's face box and applying it here double-crops
+   and lands on the forehead — which is exactly what it did on three of four
+   test faces. Zoom in slightly on what is already correct. When no face was
+   found, previewImg is the raw photo and the same centre-square is the right
+   fallback, so one path serves both. */
+function faceCropURL(size){
+  const img=$('previewImg');
+  if(!img||!img.getAttribute('src'))return null;
+  const iw=img.naturalWidth||img.width, ih=img.naturalHeight||img.height;
+  if(!iw||!ih)return null;
+  const side=Math.min(iw,ih)*0.88;                 /* trim the border so colour meets skin */
+  const ox=(iw-side)/2, oy=Math.max(0,(ih-side)/2-side*0.03);
+  const c=document.createElement('canvas');c.width=c.height=size;
+  try{
+    c.getContext('2d').drawImage(img,ox,oy,side,side,0,0,size,size);
+    return c.toDataURL('image/jpeg',.9);           /* tainted canvas must not kill the result screen */
+  }catch(e){return null;}
+}
+function renderDrape(free){
+  const el=$('drape');if(!el)return;
+  if(!free||!free.works||!free.retire){el.hidden=true;return;}
+  const url=faceCropURL(340);
+  if(!url){el.hidden=true;return;}              /* quiz-only: no face, no drape */
+  $('dpA').style.background=free.works;
+  $('dpB').style.background=free.retire;
+  $('dpImgA').src=url;$('dpImgB').src=url;
+  el.hidden=false;
 }
 function axisColors(a){
   if(!a||typeof a.depth!=='number'||typeof a.chroma!=='number')return null;
