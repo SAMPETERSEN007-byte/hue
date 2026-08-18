@@ -302,6 +302,16 @@
   .sister-note .retake:hover{opacity:.72}
   /* the tones the engine actually measured — shown only on the selfie path */
   .measured{margin-top:30px}
+  .verify{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+  .verify .vq{font:400 13px/1.5 var(--serif);color:var(--soft-strong)}
+  .vbtns{display:inline-flex;gap:8px}
+  .vb{font:600 11px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;padding:9px 14px;border:1px solid var(--line);
+      background:#fff;color:var(--ink);border-radius:2px;cursor:pointer}
+  .vb:hover{border-color:var(--soft-strong)}
+  .vb-quiet{background:transparent;color:var(--soft)}
+  .verify-more{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+  .verify-more p{font:400 13px/1.6 var(--serif);color:var(--soft-strong);margin:0 0 12px}
+  .verify[hidden],.verify-more[hidden]{display:none}
   .measured-label{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--soft-strong);font-weight:600;margin-bottom:14px}
   .measured-row{display:flex;gap:20px;justify-content:center;flex-wrap:wrap}
   .measured-note{max-width:470px;margin:16px auto 0;font-size:12.5px;line-height:1.62;
@@ -1076,7 +1086,7 @@ and with no disclosure shown. --></noscript>
         </details>
         <details>
           <summary>Is my photo uploaded anywhere?</summary>
-          <div class="a">Never. Your selfie is analyzed in your browser, on your device — it never touches a server.<span data-pixel-off> No accounts, no cookies, no ad trackers — only anonymous, cookieless counts of which steps get used: the step and the season name, never your photo, never the tones it measured.</span><span data-pixel-on hidden> No accounts, and our usage analytics are anonymous and cookieless — the step and the season name, never your photo, never the tones it measured. We do run one advertising cookie for the Meta pixel, and it never receives your photo, your measurements or your season.</span> See the <a href="privacy.html">privacy policy</a>; it lists every third party that receives anything.</div>
+          <div class="a">Never. Your selfie is analyzed in your browser, on your device — it never touches a server.<span data-pixel-off> No accounts, no cookies, no ad trackers — only anonymous, cookieless counts of which steps get used: the step and the season name, never your photo. If the tones we measured look wrong to you, we ask — and only if you say yes do those colour values reach us, never the photo and nothing that identifies you.</span><span data-pixel-on hidden> No accounts, and our usage analytics are anonymous and cookieless — the step and the season name, never your photo. If the tones we measured look wrong to you, we ask first, and only then do those colour values reach us. We do run one advertising cookie for the Meta pixel, and it never receives your photo, your measurements or your season.</span> See the <a href="privacy.html">privacy policy</a>; it lists every third party that receives anything.</div>
         </details>
         <details>
           <summary>What's in the $29 full report?</summary>
@@ -1207,6 +1217,27 @@ and with no disclosure shown. --></noscript>
              stands, and an ambiguous UNDERTONE is still sent back for a retake
              before the reveal rather than being softened here. -->
         <p class="measured-note" id="measuredNote" hidden></p>
+        <!-- THE ONLY LABELS THIS PROJECT CAN EVER GET. A draped 12-season label
+             on a photo cannot be bought, so the engine has never had ground
+             truth. She cannot judge her season here (she has not been told it)
+             but she CAN judge the tones sitting right above this, and that is
+             the measurement that everything else is derived from. -->
+        <div class="verify" id="verify" hidden>
+          <span class="vq">Do these tones look like you?</span>
+          <span class="vbtns">
+            <button type="button" class="vb" id="vYes">Yes</button>
+            <button type="button" class="vb" id="vNo">Not quite</button>
+          </span>
+        </div>
+        <div class="verify-more" id="verifyMore" hidden>
+          <p>Sorry — that is the part we most want to get right. May we send the
+             measured values so we can fix it? <strong>No photo, nothing that
+             identifies you</strong> — the colour numbers only.</p>
+          <span class="vbtns">
+            <button type="button" class="vb" id="vShare">Send the numbers</button>
+            <button type="button" class="vb vb-quiet" id="vSkip">No thanks</button>
+          </span>
+        </div>
       </div>
     </div>
 
@@ -2907,9 +2938,15 @@ function buildWheel(){
 }
 function playSteps(seq,done){
   buildWheel();
-  /* perceived-value pacing — a considered, $300-caliber analysis takes a beat.
-     PACE is the one knob: it scales every step AND the arc fill together */
-  const PACE=1.4;
+  /* perceived-value pacing — a considered analysis takes a beat, but measured
+     on production this ran 22.6s from upload to result, of which ~17.6s was
+     this narration and none of it computation (analyzePhoto itself returns in
+     30-60ms). Twenty-two seconds of spinner on a phone is a bounce, and it now
+     guards a $29 decision rather than a $5.99 one. At 0.55 the same thirteen
+     beats play in ~7s: every measurement is still named — which is what earns
+     the price — without asking her to wait a third of a minute to see anything.
+     PACE is the one knob: it scales every step AND the arc fill together. */
+  const PACE=0.55;
   const el=$('stepText'),arc=$('arcFill');
   const total=seq.reduce((a,s)=>a+s[1]*PACE,0)+300;
   if(arc){ /* the arc draws over exactly the length of the sequence */
@@ -3165,6 +3202,7 @@ function render(season,fresh){
         : '<div class="sw ph"></div>'.repeat(3);
     /* show her the difference rather than describing it */
     renderDrape(free);
+    renderVerify();
   }
   if(isUnlocked)applyUnlocked(); else applyLocked();
   store.save();
@@ -3215,6 +3253,48 @@ function faceCropURL(size){
     c.getContext('2d').drawImage(img,ox,oy,side,side,0,0,size,size);
     return c.toDataURL('image/jpeg',.9);           /* tainted canvas must not kill the result screen */
   }catch(e){return null;}
+}
+/* WHAT THE ENGINE HAS NEVER HAD: a label. A draped 12-season verdict on a photo
+   cannot be bought, so accuracy has only ever been checked against faces I
+   picked myself. She cannot grade her season — she has not been told it — but
+   she can grade the TONES, and every axis is derived from those.
+
+   The verdict alone is an anonymous count of a step, which is what the privacy
+   policy and the FAQ already disclose. The measured VALUES are not: both say in
+   as many words "never the tones it measured". So they are sent only when she
+   says the read is wrong AND then explicitly agrees — which is also the only
+   case where they are worth having. Nothing is sent on the happy path. */
+let verifyVerdict=null;
+function readVector(){
+  const p=lastPhotoRead; if(!p)return null;
+  const r=v=>typeof v==='number'?Math.round(v*1000)/1000:v;
+  return {skin:p.skinHex,hair:p.hairHex,eye:p.eyeHex,lip:p.lipHex,eyeName:p.eyeName,
+    warmSig:r(p.warmSig),relWarm:r(p.relWarm),hue:r(p.hue),labC:r(p.labC),
+    depth:r(p.l),chroma:r(p.s),satRaw:r(p.satRaw),contrast:r(p.contrast),
+    skinL:r(p.skinL),wb:p.wbSource,patches:p.patches};
+}
+function initVerify(){
+  const box=$('verify'),more=$('verifyMore');
+  if(!box||box._wired)return; box._wired=true;
+  const close=msg=>{box.hidden=true;more.hidden=true;toast(msg);};
+  $('vYes').onclick=()=>{verifyVerdict='yes';
+    track('read_feedback',{verdict:'yes'});
+    close('Thank you — that helps.');};
+  $('vNo').onclick=()=>{verifyVerdict='no';
+    track('read_feedback',{verdict:'no'});      /* the count only, no values */
+    box.hidden=true;more.hidden=false;};
+  $('vShare').onclick=()=>{
+    const v=readVector();
+    if(v)track('read_measurement',Object.assign({verdict:'no'},v));
+    close('Sent — thank you, that is exactly what we need.');};
+  $('vSkip').onclick=()=>close('Understood — thank you for telling us.');
+}
+function renderVerify(){
+  const box=$('verify');if(!box)return;
+  /* only when there is a photo read to grade */
+  const ok=!!(lastPhotoRead&&lastPhotoRead.skinHex);
+  box.hidden=!ok; $('verifyMore').hidden=true;
+  if(ok)initVerify();
 }
 function renderDrape(free){
   const el=$('drape');if(!el)return;
