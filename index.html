@@ -2993,7 +2993,19 @@ function render(season,fresh){
   /* season is NULL for every locked visitor now — this page is not told the
      answer until the worker returns it against a paid token (grantUnlock).
      Every read of `d` below is therefore guarded or sits inside revealVerdict. */
-  if(fresh!==false)track('price_exposed',{px:PRICE_CENTS});
+  if(fresh!==false){
+    track('price_exposed',{px:PRICE_CENTS});
+    /* THE ONLY MID-FUNNEL SIGNAL META CAN OPTIMISE ON. ViewContent fires on page
+       load, so a campaign optimised for it is a traffic campaign paying
+       conversion prices; InitiateCheckout and Purchase are far too sparse to
+       teach anything (single digits and zero, lifetime). This fires when she has
+       finished the quiz, given a photo and been shown the price — genuine intent
+       short of checkout, which is what AddToCart means. Nothing optimises on it
+       yet; it is here so that after a few hundred of them exist, a Conversions
+       campaign becomes possible at all. */
+    fbtrack('AddToCart',{content_ids:['hue-report'],content_type:'product',
+      content_name:'HUE personal color report',value:PRICE_CENTS/100,currency:'USD'});
+  }
   currentSeason=season;const d=season?SEASONS[season]:null;
   /* THE VERDICT IS THE PRODUCT, SO THE VERDICT IS WHAT IS SOLD.
      This screen used to print the season, its description, its colour band and
